@@ -1,0 +1,280 @@
+{
+  "timestamp": "2026-09-20T11:54:01.443Z",
+  "summary": {
+    "totalIncidents": 10,
+    "locations": {
+      "Zapote RD": 1,
+      "Zapote Rd": 3,
+      "Zabarte Rd": 1,
+      "kiko camarin": 1,
+      "North Caloocan": 1,
+      "Camarin Caloocan": 1,
+      "Zabarte": 1,
+      "camarin": 1
+    },
+    "incidentTypes": {
+      "Assault": 4,
+      "Theft": 2,
+      "Vandalism": 1,
+      "Other": 1,
+      "Traffic Violation": 1,
+      "Noise Complaint": 1
+    },
+    "priorities": {
+      "Medium": 6,
+      "High": 1,
+      "Low": 3
+    },
+    "statuses": {
+      "Under Investigation": 3,
+      "Closed": 3,
+      "Pending": 1,
+      "For Mediation": 2,
+      "Resolved": 1
+    },
+    "totalCases": 10,
+    "totalDispatches": 8,
+    "dispatchStatuses": {
+      "Completed": 8
+    },
+    "totalEvidence": 5,
+    "evidenceTypes": {
+      "Image": 4,
+      "Video": 1
+    },
+    "evidenceStatuses": {
+      "In Custody": 2,
+      "Archived": 3
+    },
+    "totalPoliceStations": 3,
+    "totalCaseUpdates": 0
+  },
+  "issues": [
+    {
+      "category": "LOCATION_INCONSISTENT",
+      "table": "incidents",
+      "recordId": "1ac149f9-2075-4125-bb8c-5e321d115ba4",
+      "field": "location",
+      "currentValue": "Zapote RD",
+      "proposedValue": "Zapote Road, Camarin",
+      "reason": "Location capitalization/format inconsistent"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "incidents",
+      "recordId": "e6739a11-71fc-481f-b38f-94ff0d3f0b9b",
+      "field": "description",
+      "currentValue": "test test test 222111333...",
+      "proposedValue": "Realistic incident description",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "LOCATION_INCONSISTENT",
+      "table": "incidents",
+      "recordId": "e6739a11-71fc-481f-b38f-94ff0d3f0b9b",
+      "field": "location",
+      "currentValue": "Zapote Rd",
+      "proposedValue": "Zapote Road, Camarin",
+      "reason": "Location capitalization/format inconsistent"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "incidents",
+      "recordId": "900ea09f-f08b-4632-9377-345006336dae",
+      "field": "description",
+      "currentValue": "test test 112233...",
+      "proposedValue": "Realistic incident description",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "LOCATION_INCONSISTENT",
+      "table": "incidents",
+      "recordId": "900ea09f-f08b-4632-9377-345006336dae",
+      "field": "location",
+      "currentValue": "Zapote Rd",
+      "proposedValue": "Zapote Road, Camarin",
+      "reason": "Location capitalization/format inconsistent"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "incidents",
+      "recordId": "7f74efc7-d8ac-4016-b586-14b3d227a738",
+      "field": "description",
+      "currentValue": "test test...",
+      "proposedValue": "Realistic incident description",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "incidents",
+      "recordId": "6daa0103-92bb-4b09-b862-38a42dce6687",
+      "field": "description",
+      "currentValue": "test 4...",
+      "proposedValue": "Realistic incident description",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "incidents",
+      "recordId": "6daa0103-92bb-4b09-b862-38a42dce6687",
+      "field": "location",
+      "currentValue": "kiko camarin",
+      "proposedValue": "Realistic Camarin location",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "LOCATION_INCONSISTENT",
+      "table": "incidents",
+      "recordId": "6daa0103-92bb-4b09-b862-38a42dce6687",
+      "field": "location",
+      "currentValue": "kiko camarin",
+      "proposedValue": "Camarin, Caloocan City",
+      "reason": "Location capitalization/format inconsistent"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "incidents",
+      "recordId": "2192f73b-3058-4902-a25b-bd4b2154f3ca",
+      "field": "description",
+      "currentValue": "test 3...",
+      "proposedValue": "Realistic incident description",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "incidents",
+      "recordId": "fcdcb46b-e661-43b6-ad5d-981daf34278a",
+      "field": "description",
+      "currentValue": "test 2...",
+      "proposedValue": "Realistic incident description",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "LOCATION_INCONSISTENT",
+      "table": "incidents",
+      "recordId": "fcdcb46b-e661-43b6-ad5d-981daf34278a",
+      "field": "location",
+      "currentValue": "Zapote Rd",
+      "proposedValue": "Zapote Road, Camarin",
+      "reason": "Location capitalization/format inconsistent"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "incidents",
+      "recordId": "f42bf754-1f55-4ee5-aaa3-bbdf46b99279",
+      "field": "description",
+      "currentValue": "test 1...",
+      "proposedValue": "Realistic incident description",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "LOCATION_INCONSISTENT",
+      "table": "incidents",
+      "recordId": "f42bf754-1f55-4ee5-aaa3-bbdf46b99279",
+      "field": "location",
+      "currentValue": "Camarin Caloocan",
+      "proposedValue": "Camarin, Caloocan City",
+      "reason": "Location capitalization/format inconsistent"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "incidents",
+      "recordId": "0a4602a2-22f2-4c14-a603-b207c21d75b4",
+      "field": "description",
+      "currentValue": "TEST...",
+      "proposedValue": "Realistic incident description",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "LOCATION_INCONSISTENT",
+      "table": "incidents",
+      "recordId": "0a4602a2-22f2-4c14-a603-b207c21d75b4",
+      "field": "location",
+      "currentValue": "camarin",
+      "proposedValue": "Camarin",
+      "reason": "Location capitalization/format inconsistent"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "case_documentations",
+      "recordId": "0a4602a2-22f2-4c14-a603-b207c21d75b4",
+      "field": "case_notes",
+      "currentValue": "Case is under investigation\n\n[8/28/2026, 10:59:43 ...",
+      "proposedValue": "Realistic case notes",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "case_documentations",
+      "recordId": "fcdcb46b-e661-43b6-ad5d-981daf34278a",
+      "field": "case_notes",
+      "currentValue": "test...",
+      "proposedValue": "Realistic case notes",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "evidence",
+      "recordId": "eb85e11f-992f-498f-9e48-c4d763773ebe",
+      "field": "evidence_name",
+      "currentValue": "test",
+      "proposedValue": "Realistic evidence description",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "police_stations",
+      "recordId": "60f98e22-1aad-45c5-957c-1a5c61559972",
+      "field": "station_name",
+      "currentValue": "Test Police Station Alpha",
+      "proposedValue": "Generic but professional name (e.g., \"North Caloocan Police Station\")",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "police_stations",
+      "recordId": "60f98e22-1aad-45c5-957c-1a5c61559972",
+      "field": "address",
+      "currentValue": "Mock Address - North Caloocan (Test Data)",
+      "proposedValue": "Generic professional address",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "police_stations",
+      "recordId": "9429ff11-f986-4552-8523-f2b943f3221b",
+      "field": "station_name",
+      "currentValue": "Test Police Station Bravo",
+      "proposedValue": "Generic but professional name (e.g., \"North Caloocan Police Station\")",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "police_stations",
+      "recordId": "9429ff11-f986-4552-8523-f2b943f3221b",
+      "field": "address",
+      "currentValue": "Mock Address - Camarin Central (Test Data)",
+      "proposedValue": "Generic professional address",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "police_stations",
+      "recordId": "e1f2991b-ea4f-449b-96df-d87f10653ecb",
+      "field": "station_name",
+      "currentValue": "Test Police Station Charlie",
+      "proposedValue": "Generic but professional name (e.g., \"North Caloocan Police Station\")",
+      "reason": "Contains test/mock keywords"
+    },
+    {
+      "category": "TEST_DATA",
+      "table": "police_stations",
+      "recordId": "e1f2991b-ea4f-449b-96df-d87f10653ecb",
+      "field": "address",
+      "currentValue": "Mock Address - East Camarin (Test Data)",
+      "proposedValue": "Generic professional address",
+      "reason": "Contains test/mock keywords"
+    }
+  ],
+  "recommendations": []
+}

@@ -1,0 +1,187 @@
+# ============================================================================
+# LEIRS PROJECT - ROOT GITIGNORE
+# ============================================================================
+# This file protects sensitive credentials and build artifacts across the
+# entire LEIRS project (frontend + backend + documentation).
+# ============================================================================
+
+# ============================================================================
+# CRITICAL: ENVIRONMENT FILES (MUST NOT BE COMMITTED)
+# ============================================================================
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+.env.test
+.env.backup
+.env.backup.*
+*.env.backup
+
+# EXCEPTION: Allow .env.example files (they contain placeholders only)
+!.env.example
+!**/.env.example
+
+# ============================================================================
+# CRITICAL: DATABASE FILES (MAY CONTAIN SENSITIVE DATA)
+# ============================================================================
+*.sqlite
+*.sqlite3
+*.db
+
+# ============================================================================
+# DEPENDENCIES
+# ============================================================================
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+package-lock.json
+
+# PHP/Laravel
+vendor/
+composer.lock
+
+# ============================================================================
+# BUILD OUTPUTS
+# ============================================================================
+dist/
+dist-ssr/
+build/
+public/build/
+public/hot/
+public/storage/
+
+# ============================================================================
+# LOGS
+# ============================================================================
+logs/
+*.log
+
+# ============================================================================
+# OPERATING SYSTEM FILES
+# ============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================================================
+# EDITOR AND IDE FILES
+# ============================================================================
+# Visual Studio Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# JetBrains IDEs (PhpStorm, WebStorm, IntelliJ)
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*.swn
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Notepad++
+*.bak
+
+# ============================================================================
+# TEMPORARY FILES
+# ============================================================================
+tmp/
+temp/
+*.tmp
+*.temp
+*.cache
+
+# ============================================================================
+# LARAVEL/PHP SPECIFIC (Backend)
+# ============================================================================
+storage/*.key
+storage/pail/
+.phpunit.result.cache
+.phpunit.cache
+.phpactor.json
+auth.json
+Homestead.json
+Homestead.yaml
+
+# ============================================================================
+# VITE/REACT SPECIFIC (Frontend)
+# ============================================================================
+*.local
+
+# ============================================================================
+# MISCELLANEOUS
+# ============================================================================
+# Backup files
+*.backup
+*.bak
+*.old
+
+# Coverage reports
+coverage/
+*.coverage
+
+# Test artifacts
+.nyc_output/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# ============================================================================
+# PROJECT-SPECIFIC EXCLUSIONS
+# ============================================================================
+# Keep documentation and audit files (demonstrate work for capstone)
+# These files are intentionally tracked:
+# - docs/
+# - *.md files
+# - *_AUDIT.sql files
+# - *_REPORT.md files
+
+# ============================================================================
+# END OF ROOT .gitignore
+# ============================================================================

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEIRS Auth Diagnosis</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #00ff00; border-bottom: 2px solid #00ff00; padding-bottom: 10px; }
+        h2 { color: #00ffff; margin-top: 30px; }
+        .section { background: #2a2a2a; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        .success { color: #00ff00; }
+        .error { color: #ff0000; }
+        .warning { color: #ffaa00; }
+        .info { color: #00ffff; }
+        pre { background: #000; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { 
+            background: #00ff00; 
+            color: #000; 
+            border: none; 
+            padding: 10px 20px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border-radius: 5px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #00ffff; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #00ff00; padding: 8px; text-align: left; }
+        th { background: #003300; }
+    </style>
+</head>
+<body>
+    <h1>🔍 LEIRS SUPABASE AUTH DIAGNOSIS</h1>
+    <p class="info">⚠️  DIAGNOSIS ONLY - NO MODIFICATIONS</p>
+    
+    <button onclick="runDiagnosis()">🚀 RUN FULL DIAGNOSIS</button>
+    <button onclick="clearResults()">🗑️ CLEAR RESULTS</button>
+    
+    <div id="results"></div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+        const supabaseUrl = 'https://kyvhyhmqwcxbloiliojw.supabase.co'
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5dmh5aG1xd2N4YmxvaWxpb2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjQzMzM5NzIsImV4cCI6MjAzOTkwOTk3Mn0.3RH8i6yHIwFKw6qlJUdlqTxAIBOHmHCMXKiWhq-WAbU'
+
+        const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+        window.runDiagnosis = async function() {
+            const results = document.getElementById('results')
+            results.innerHTML = '<p class="info">⏳ Running diagnosis...</p>'
+
+            let html = ''
+
+            // Section 1: Check profiles table exists and structure
+            html += '<div class="section">'
+            html += '<h2>1️⃣ PROFILES TABLE CHECK</h2>'
+            try {
+                const { data, error, count } = await supabase
+                    .from('profiles')
+                    .select('*', { count: 'exact', head: true })
+
+                if (error) {
+                    if (error.code === '42P01') {
+                        html += '<p class="error">✗ profiles table DOES NOT EXIST</p>'
+                        html += '<p class="warning">⚠️ Need to run phase1_auth_setup.sql</p>'
+                    } else {
+                        html += `<p class="error">✗ Error: ${error.message}</p>`
+                    }
+                } else {
+                    html += '<p class="success">✓ profiles table EXISTS</p>'
+                    html += `<p class="info">Total profiles: ${count || 0}</p>`
+                }
+            } catch (err) {
+                html += `<p class="error">✗ Exception: ${err.message}</p>`
+            }
+            html += '</div>'
+
+            // Section 2: List all profiles
+            html += '<div class="section">'
+            html += '<h2>2️⃣ PROFILE RECORDS</h2>'
+            try {
+                const { data: profiles, error } = await supabase
+                    .from('profiles')
+                    .select('id, email, full_name, role, status')
+                    .order('created_at')
+
+                if (error) {
+                    html += `<p class="error">✗ Error: ${error.message}</p>`
+                } else if (!profiles || profiles.length === 0) {
+                    html += '<p class="warning">⚠️ NO PROFILES FOUND (profiles table is EMPTY)</p>'
+                    html += '<p class="info">This means auth users exist but have no linked profiles</p>'
+                } else {
+                    html += `<p class="success">✓ Found ${profiles.length} profiles</p>`
+                    html += '<table>'
+                    html += '<tr><th>Email</th><th>Full Name</th><th>Role</th><th>Status</th><th>ID (first 8)</th></tr>'
+                    profiles.forEach(p => {
+                        html += `<tr>`
+                        html += `<td>${p.email}</td>`
+                        html += `<td>${p.full_name}</td>`
+                        html += `<td>${p.role}</td>`
+                        html += `<td class="${p.status === 'Active' ? 'success' : 'error'}">${p.status}</td>`
+                        html += `<td>${p.id.substring(0, 8)}...</td>`
+                        html += `</tr>`
+                    })
+                    html += '</table>'
+                }
+            } catch (err) {
+                html += `<p class="error">✗ Exception: ${err.message}</p>`
+            }
+            html += '</div>'
+
+            // Section 3: Check specific emails exist in profiles
+            html += '<div class="section">'
+            html += '<h2>3️⃣ SIX ADMIN ACCOUNT STATUS</h2>'
+            const requiredEmails = [
+                'sysadmin@leirs.com',
+                'incident@leirs.com',
+                'caseadmin@leirs.com',
+                'dispatch@leirs.com',
+                'evidence@leirs.com',
+                'status@leirs.com'
+            ]
+            const expectedRoles = [
+                'system_admin',
+                'incident_admin',
+                'case_admin',
+                'dispatch_admin',
+                'evidence_admin',
+                'status_admin'
+            ]
+
+            html += '<table>'
+            html += '<tr><th>Email</th><th>Expected Role</th><th>Profile Exists</th><th>Actual Role</th><th>Status</th></tr>'
+
+            for (let i = 0; i < requiredEmails.length; i++) {
+                const email = requiredEmails[i]
+                const expectedRole = expectedRoles[i]
+
+                try {
+                    const { data: profile, error } = await supabase
+                        .from('profiles')
+                        .select('role, status')
+                        .eq('email', email)
+                        .single()
+
+                    if (error) {
+                        if (error.code === 'PGRST116') {
+                            html += `<tr>`
+                            html += `<td>${email}</td>`
+                            html += `<td>${expectedRole}</td>`
+                            html += `<td class="error">✗ NO</td>`
+                            html += `<td class="error">N/A</td>`
+                            html += `<td class="error">MISSING</td>`
+                            html += `</tr>`
+                        } else {
+                            html += `<tr>`
+                            html += `<td>${email}</td>`
+                            html += `<td>${expectedRole}</td>`
+                            html += `<td class="error">ERROR</td>`
+                            html += `<td colspan="2">${error.message}</td>`
+                            html += `</tr>`
+                        }
+                    } else {
+                        const roleMatch = profile.role === expectedRole
+                        const isActive = profile.status === 'Active'
+                        html += `<tr>`
+                        html += `<td>${email}</td>`
+                        html += `<td>${expectedRole}</td>`
+                        html += `<td class="success">✓ YES</td>`
+                        html += `<td class="${roleMatch ? 'success' : 'error'}">${profile.role} ${roleMatch ? '✓' : '✗'}</td>`
+                        html += `<td class="${isActive ? 'success' : 'error'}">${profile.status}</td>`
+                        html += `</tr>`
+                    }
+                } catch (err) {
+                    html += `<tr>`
+                    html += `<td>${email}</td>`
+                    html += `<td>${expectedRole}</td>`
+                    html += `<td class="error">EXCEPTION</td>`
+                    html += `<td colspan="2">${err.message}</td>`
+                    html += `</tr>`
+                }
+            }
+            html += '</table>'
+            html += '</div>'
+
+            // Section 4: Test RLS Policy - Can user read own profile?
+            html += '<div class="section">'
+            html += '<h2>4️⃣ RLS POLICY TEST</h2>'
+            html += '<p class="info">Testing if authenticated user can read their OWN profile...</p>'
+            
+            // Try to sign in as sysadmin and read profile
+            html += '<p class="info">Attempting login as sysadmin@leirs.com...</p>'
+            try {
+                const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+                    email: 'sysadmin@leirs.com',
+                    password: 'sysadmin123'
+                })
+
+                if (signInError) {
+                    html += `<p class="error">✗ Login FAILED: ${signInError.message}</p>`
+                    html += `<p class="warning">⚠️ This could mean:</p>`
+                    html += `<ul>`
+                    html += `<li>Auth user doesn't exist in auth.users</li>`
+                    html += `<li>Password is incorrect</li>`
+                    html += `<li>Email not confirmed</li>`
+                    html += `</ul>`
+                } else {
+                    html += `<p class="success">✓ Login SUCCESS</p>`
+                    html += `<p class="info">User ID: ${authData.user.id.substring(0, 8)}...</p>`
+
+                    // Now try to read own profile
+                    html += '<p class="info">Attempting to read own profile...</p>'
+                    const { data: profileData, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', authData.user.id)
+                        .single()
+
+                    if (profileError) {
+                        html += `<p class="error">✗ Profile read FAILED: ${profileError.message}</p>`
+                        html += `<p class="warning">⚠️ RLS policy blocking OR profile doesn't exist</p>`
+                    } else {
+                        html += `<p class="success">✓ Profile read SUCCESS</p>`
+                        html += `<pre>${JSON.stringify(profileData, null, 2)}</pre>`
+                    }
+
+                    // Sign out
+                    await supabase.auth.signOut()
+                    html += '<p class="info">Signed out</p>'
+                }
+            } catch (err) {
+                html += `<p class="error">✗ Exception: ${err.message}</p>`
+            }
+            html += '</div>'
+
+            // Section 5: Summary and recommendations
+            html += '<div class="section">'
+            html += '<h2>5️⃣ DIAGNOSIS SUMMARY</h2>'
+            html += '<p class="info">Based on the results above, the system will determine:</p>'
+            html += '<ul>'
+            html += '<li>A. Whether profiles table exists</li>'
+            html += '<li>B. Whether 6 admin profiles exist with correct roles</li>'
+            html += '<li>C. Whether Auth users can login</li>'
+            html += '<li>D. Whether RLS policies block profile reads</li>'
+            html += '<li>E. Exact fix needed (if any)</li>'
+            html += '</ul>'
+            html += '</div>'
+
+            results.innerHTML = html
+        }
+
+        window.clearResults = function() {
+            document.getElementById('results').innerHTML = ''
+        }
+    </script>
+</body>
+</html>

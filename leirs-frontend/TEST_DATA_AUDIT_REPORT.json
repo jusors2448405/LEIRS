@@ -1,0 +1,392 @@
+{
+  "clearlyTest": [],
+  "possiblyTest": [],
+  "keep": [
+    {
+      "incident_id": "661aad77-fa5d-45ad-a6de-b44764604a8a",
+      "case_id": "0ad072c8-94cf-4169-ab14-45b6b6558ee1",
+      "incident_type": "Assault",
+      "location": "Kiko Wet and Dry Market, Camarin Road, Barangay 178, Zone 15, Camarin, District 3, Caloocan, Northern Manila District, Metro Manila, 1422, Philippines",
+      "date": "2026-09-20",
+      "status": "For Mediation",
+      "case_documentation": {
+        "case_number": "CASE-2026-0920-985"
+      },
+      "dispatches": [
+        {
+          "id": "7c3cef0b-1485-464b-8615-4d78fec3c9e6",
+          "status": "Station Declined",
+          "station": "CCPS Sub-Station 11",
+          "created": "2026-09-20T17:13:54.568717+00:00"
+        }
+      ],
+      "evidence": [],
+      "case_updates": 0,
+      "has_dependencies": true,
+      "safe_to_delete": false,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    },
+    {
+      "incident_id": "2192f73b-3058-4902-a25b-bd4b2154f3ca",
+      "case_id": "ec84b291-289f-4cfe-8bbb-1abc44aae942",
+      "incident_type": "Other",
+      "location": "North Caloocan",
+      "date": "2026-08-28",
+      "status": "Pending",
+      "case_documentation": {
+        "case_number": "CASE-2026-0919-537"
+      },
+      "dispatches": [],
+      "evidence": [],
+      "case_updates": 0,
+      "has_dependencies": false,
+      "safe_to_delete": true,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    }
+  ],
+  "historical": [
+    {
+      "incident_id": "07cfbe19-dd1b-4cb0-9c08-fc17453726fb",
+      "case_id": "e58b00db-ded1-4a30-954f-7d64ef404c36",
+      "incident_type": "Assault",
+      "location": "Zabarte Rd",
+      "date": "2026-09-20",
+      "status": "Resolved",
+      "case_documentation": {
+        "case_number": "CASE-2026-0920-909"
+      },
+      "dispatches": [
+        {
+          "id": "51355330-947a-4b3f-9e20-7ecc11dcc9bc",
+          "status": "Completed",
+          "station": "Test Police Station Charlie",
+          "created": "2026-09-20T13:56:57.825314+00:00"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "c44aa513-98dd-4725-99d2-cfc0a23d5ffe",
+          "type": "Video",
+          "name": "CTV Footage - Zabarte Road Assault"
+        }
+      ],
+      "case_updates": 0,
+      "has_dependencies": true,
+      "safe_to_delete": false,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    },
+    {
+      "incident_id": "1ac149f9-2075-4125-bb8c-5e321d115ba4",
+      "case_id": "fff4becd-7014-4b10-bef3-468004ebacc2",
+      "incident_type": "Assault",
+      "location": "Zapote RD",
+      "date": "2026-09-13",
+      "status": "Under Investigation",
+      "case_documentation": {
+        "case_number": "CASE-2026-0913-418"
+      },
+      "dispatches": [
+        {
+          "id": "0f2e81f3-3364-47b2-a150-ad97911a0bd9",
+          "status": "Completed",
+          "station": "CCPS Sub-Station IV",
+          "created": "2026-09-13T14:45:06.478322+00:00"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "eb85e11f-992f-498f-9e48-c4d763773ebe",
+          "type": "Image",
+          "name": "test"
+        }
+      ],
+      "case_updates": 0,
+      "has_dependencies": true,
+      "safe_to_delete": false,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    },
+    {
+      "incident_id": "e6739a11-71fc-481f-b38f-94ff0d3f0b9b",
+      "case_id": "2acc36de-3987-43b5-87d3-52f27af474ce",
+      "incident_type": "Assault",
+      "location": "Zapote Rd",
+      "date": "2026-09-02",
+      "status": "Under Investigation",
+      "case_documentation": {
+        "case_number": "CASE-2026-0902-345"
+      },
+      "dispatches": [
+        {
+          "id": "bf4fda9d-404b-42c9-ad8a-3447d5005454",
+          "status": "Completed",
+          "station": "CCPS Sub-Station 11",
+          "created": "2026-09-19T04:26:09.870102+00:00"
+        }
+      ],
+      "evidence": [],
+      "case_updates": 0,
+      "has_dependencies": true,
+      "safe_to_delete": false,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    },
+    {
+      "incident_id": "900ea09f-f08b-4632-9377-345006336dae",
+      "case_id": "3dd946a5-eacb-45db-98ef-7e69d45b1d1a",
+      "incident_type": "Theft",
+      "location": "Zapote Rd",
+      "date": "2026-08-29",
+      "status": "Closed",
+      "case_documentation": {
+        "case_number": "CASE-2026-0920-000"
+      },
+      "dispatches": [
+        {
+          "id": "435ddb86-098f-4534-9504-55990f558aeb",
+          "status": "Completed",
+          "station": "Test Police Station Charlie",
+          "created": "2026-09-19T16:48:49.688905+00:00"
+        }
+      ],
+      "evidence": [],
+      "case_updates": 0,
+      "has_dependencies": true,
+      "safe_to_delete": false,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    },
+    {
+      "incident_id": "7f74efc7-d8ac-4016-b586-14b3d227a738",
+      "case_id": "1658ff3b-8554-44b5-8c20-a322fe5cfcb8",
+      "incident_type": "Assault",
+      "location": "Zabarte Rd",
+      "date": "2026-08-29",
+      "status": "For Mediation",
+      "case_documentation": {
+        "case_number": "CASE-2026-0829-586"
+      },
+      "dispatches": [
+        {
+          "id": "9ca04456-a2a1-42b7-9593-643968d8caf3",
+          "status": "Completed",
+          "station": "CCPS Sub-Station 11",
+          "created": "2026-09-20T14:28:15.444718+00:00"
+        }
+      ],
+      "evidence": [],
+      "case_updates": 0,
+      "has_dependencies": true,
+      "safe_to_delete": false,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    },
+    {
+      "incident_id": "6daa0103-92bb-4b09-b862-38a42dce6687",
+      "case_id": "bddbe535-8a58-459e-8f9a-83b00ac1759c",
+      "incident_type": "Vandalism",
+      "location": "kiko camarin",
+      "date": "2026-08-28",
+      "status": "Closed",
+      "case_documentation": {
+        "case_number": "CASE-2026-0920-303"
+      },
+      "dispatches": [
+        {
+          "id": "79d964bc-f88f-440b-b641-9ccc4770b0c7",
+          "status": "Completed",
+          "station": "CCPS Sub-Station 11",
+          "created": "2026-09-19T16:58:20.053106+00:00"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "72211ed9-a93e-4237-aa3d-f91377b670fe",
+          "type": "Image",
+          "name": "vandal"
+        }
+      ],
+      "case_updates": 0,
+      "has_dependencies": true,
+      "safe_to_delete": false,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    },
+    {
+      "incident_id": "fcdcb46b-e661-43b6-ad5d-981daf34278a",
+      "case_id": "99856955-2308-4564-8dff-58fc2bd7263e",
+      "incident_type": "Traffic Violation",
+      "location": "Zapote Rd",
+      "date": "2026-08-28",
+      "status": "For Mediation",
+      "case_documentation": {
+        "case_number": "CASE-2026-0829-336"
+      },
+      "dispatches": [
+        {
+          "id": "52459665-3067-4c4b-8b58-5590bd43b977",
+          "status": "Completed",
+          "station": "CCPS Sub-Station IV",
+          "created": "2026-09-19T03:25:09.748026+00:00"
+        }
+      ],
+      "evidence": [],
+      "case_updates": 0,
+      "has_dependencies": true,
+      "safe_to_delete": false,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    },
+    {
+      "incident_id": "f42bf754-1f55-4ee5-aaa3-bbdf46b99279",
+      "case_id": "991199cd-3f1c-442d-92f3-ff2aa8410ff1",
+      "incident_type": "Assault",
+      "location": "Camarin Caloocan",
+      "date": "2026-08-28",
+      "status": "For Mediation",
+      "case_documentation": {
+        "case_number": "CASE-2026-0829-986"
+      },
+      "dispatches": [
+        {
+          "id": "95316aa6-fcf6-41e9-b7fc-4768a05808af",
+          "status": "Completed",
+          "station": "Test Police Station Charlie",
+          "created": "2026-09-02T15:25:19.858685+00:00"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "4c78c34e-d1f6-4578-b229-522e0efdc4a5",
+          "type": "Image",
+          "name": "Image "
+        }
+      ],
+      "case_updates": 0,
+      "has_dependencies": true,
+      "safe_to_delete": false,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    },
+    {
+      "incident_id": "744cb7b9-2090-4e4a-a3e7-609a548ef073",
+      "case_id": "d1f89267-cee9-46e3-8d8d-edbf1a91a4b9",
+      "incident_type": "Noise Complaint",
+      "location": "Zabarte",
+      "date": "2026-08-26",
+      "status": "Closed",
+      "case_documentation": {
+        "case_number": "CASE-2026-0827-801"
+      },
+      "dispatches": [
+        {
+          "id": "baf2ac4e-186f-4983-8235-94756b8dd752",
+          "status": "Completed",
+          "station": "Test Police Station Charlie",
+          "created": "2026-08-26T18:26:29.624068+00:00"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "981bc13e-ff4b-4b70-97bf-2ae6d959f13a",
+          "type": "Image",
+          "name": "Noise Complaint"
+        }
+      ],
+      "case_updates": 0,
+      "has_dependencies": true,
+      "safe_to_delete": false,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    },
+    {
+      "incident_id": "0a4602a2-22f2-4c14-a603-b207c21d75b4",
+      "case_id": "2a5ad49a-ca1b-433a-b6a9-55985ab8bbca",
+      "incident_type": "Theft",
+      "location": "camarin",
+      "date": "2026-08-26",
+      "status": "Resolved",
+      "case_documentation": {
+        "case_number": "CASE-2026-0827-266"
+      },
+      "dispatches": [
+        {
+          "id": "7af65c36-84bb-4831-9291-89a507a82f81",
+          "status": "Completed",
+          "station": "CCPS Sub-Station IV",
+          "created": "2026-08-26T17:48:06.274598+00:00"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "4121520a-b983-45bd-9cbc-66515b3c121b",
+          "type": "Video",
+          "name": "Nag nakaw sa tindahan"
+        }
+      ],
+      "case_updates": 0,
+      "has_dependencies": true,
+      "safe_to_delete": false,
+      "indicators": {
+        "test_in_title": false,
+        "test_in_description": false,
+        "test_in_location": false,
+        "test_in_reporter": false
+      }
+    }
+  ],
+  "summary": {
+    "totalIncidents": 12,
+    "clearlyTestCount": 0,
+    "possiblyTestCount": 0,
+    "keepCount": 2,
+    "historicalCount": 10
+  }
+}
