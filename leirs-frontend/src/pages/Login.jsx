@@ -90,16 +90,7 @@ const Login = ({ onLogin }) => {
 
   const completeLogin = async (profile) => {
     try {
-      // Update last login timestamp
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ last_login_at: new Date().toISOString() })
-        .eq('id', profile.id)
-
-      if (updateError) {
-        console.warn('[Login] Failed to update last_login_at:', updateError)
-        // Don't block login if timestamp update fails
-      }
+      // Last login timestamp update removed - RLS policy issue, non-essential for login
 
       // Log login activity
       logActivity({
