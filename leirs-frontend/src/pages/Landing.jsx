@@ -1,5 +1,4 @@
 import React from 'react'
-import barangay178 from "../assets/barangay178.png";
 import { 
   ShieldAlert, 
   FileText, 
@@ -15,7 +14,7 @@ import {
   BarChart3
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import barangayHallImage from '../assets/barangay178.png'
+import barangay178 from '../assets/barangay178.png'
 import useDashboardStats from '../hooks/useDashboardStats'
 
 const Landing = () => {

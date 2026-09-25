@@ -120,25 +120,20 @@ const Settings = () => {
       text: 'Password change via UI is temporarily disabled. Passwords are managed through Supabase Auth.' 
     })
     setLoading(false)
-    return
-
-    // TODO: Implement Supabase Auth password change
+    
+    // TODO: Implement Supabase Auth password change when needed
+    // Uncomment below when ready:
     // await supabase.auth.updateUser({ password: passwordForm.newPassword })
-
-    // Log activity
-    logActivity({
-      action: ACTIVITY_ACTIONS.USER_PASSWORD_CHANGED,
-      performed_by: user.email,
-      target_user: user.email,
-      description: `${user.full_name || user.name} changed their password`,
-      metadata: { self_change: true }
-    })
-
-    setMessage({ type: 'success', text: 'Password changed successfully' })
-    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
-    setLoading(false)
-
-    setTimeout(() => setMessage({ type: '', text: '' }), 3000)
+    // logActivity({
+    //   action: ACTIVITY_ACTIONS.USER_PASSWORD_CHANGED,
+    //   performed_by: user.email,
+    //   target_user: user.email,
+    //   description: `${user.full_name || user.name} changed their password`,
+    //   metadata: { self_change: true }
+    // })
+    // setMessage({ type: 'success', text: 'Password changed successfully' })
+    // setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    // setTimeout(() => setMessage({ type: '', text: '' }), 3000)
   }
 
   // Clear Activity Logs
