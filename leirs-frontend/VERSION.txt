@@ -1,0 +1,4 @@
+6c62b8a-defense-ready-no-otp
+Build Date: 2026-09-25
+Emergency deployment for defense
+All OTP code removed
