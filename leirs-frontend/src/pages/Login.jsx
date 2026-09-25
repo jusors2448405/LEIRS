@@ -83,50 +83,9 @@ const Login = ({ onLogin }) => {
         return
       }
 
-      // Step 4: Check if user is system_admin - if yes, require OTP
-      // TEMPORARILY DISABLED FOR DEFENSE - OTP feature working but email access issue
-      /*
-      if (profile.role === 'system_admin') {
-        console.log('[Login] System admin detected, requesting OTP')
-        
-        // Request OTP from Edge Function
-        setOtpLoading(true)
-        
-        // Get current session
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        const { data: otpData, error: otpGenerateError } = await supabase.functions.invoke('admin-otp', {
-          body: {
-            action: 'generate',
-            email: profile.email
-          },
-          headers: {
-            Authorization: `Bearer ${session?.access_token}`
-          }
-        })
-        setOtpLoading(false)
-
-        if (otpGenerateError || !otpData?.success) {
-          console.error('[Login] OTP generation failed:', otpGenerateError || otpData)
-          await supabase.auth.signOut()
-          setError('Unable to send verification code. Please try again.')
-          return
-        }
-
-        console.log('[Login] OTP sent successfully to', profile.email)
-        
-        // Development: Log OTP if available
-        if (otpData.dev_otp) {
-          console.log('[Login] DEV MODE - OTP:', otpData.dev_otp)
-        }
-        
-        // Store profile and show OTP modal
-        setAuthenticatedProfile(profile)
-        setOtpRequired(true)
-        setOtpExpiry(Date.now() + (otpData.expiresIn * 1000))
-        return
-      }
-      */
+      // Step 4: OTP check TEMPORARILY DISABLED for defense
+      // System admin can login directly without OTP verification
+      console.log('[Login] OTP disabled - proceeding with direct login')
 
       // Step 5: Non-admin user - proceed with regular login
       await completeLogin(profile)
