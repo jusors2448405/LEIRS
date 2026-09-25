@@ -83,9 +83,9 @@ const Login = ({ onLogin }) => {
         return
       }
 
-      // Step 4: OTP check TEMPORARILY DISABLED for defense
+      // Step 4: OTP check TEMPORARILY DISABLED for defense - FORCE REBUILD v2
       // System admin can login directly without OTP verification
-      console.log('[Login] OTP disabled - proceeding with direct login')
+      console.log('[Login] OTP disabled - proceeding with direct login for defense')
 
       // Step 5: Non-admin user - proceed with regular login
       await completeLogin(profile)
