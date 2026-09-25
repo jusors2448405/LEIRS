@@ -10,17 +10,8 @@ const Login = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
-  
-  // OTP-related state
-  const [otpRequired, setOtpRequired] = useState(false)
-  const [otpCode, setOtpCode] = useState('')
-  const [otpError, setOtpError] = useState('')
-  const [otpLoading, setOtpLoading] = useState(false)
-  const [authenticatedProfile, setAuthenticatedProfile] = useState(null)
-  const [otpExpiry, setOtpExpiry] = useState(null)
-  const [attemptsLeft, setAttemptsLeft] = useState(3)
 
-  // Admin roles that require OTP
+  // Admin roles - OTP feature temporarily disabled for defense
   const ADMIN_ROLES = [
     'system_admin',
     'incident_admin',
@@ -96,137 +87,6 @@ const Login = ({ onLogin }) => {
     }
   }
 
-  const handleOtpSubmit = async (e) => {
-    e.preventDefault()
-    setOtpError('')
-
-    if (!otpCode || otpCode.length !== 6) {
-      setOtpError('Please enter a 6-digit code')
-      return
-    }
-
-    try {
-      setOtpLoading(true)
-
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession()
-
-      // Verify OTP via Edge Function
-      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('admin-otp', {
-        body: {
-          action: 'verify',
-          email: authenticatedProfile.email,
-          otp: otpCode
-        },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`
-        }
-      })
-
-      setOtpLoading(false)
-
-      // Check if there's a network/connection error
-      if (verifyError) {
-        console.error('[Login] OTP verification error:', verifyError)
-        setOtpError('Verification failed. Please try again.')
-        return
-      }
-
-      // Check if verification was successful
-      if (!verifyData?.success) {
-        // Handle specific error cases
-        if (verifyData?.error === 'Incorrect OTP') {
-          const remaining = verifyData.attemptsLeft || 0
-          setAttemptsLeft(remaining)
-          
-          // If no attempts left, sign out
-          if (remaining === 0) {
-            await supabase.auth.signOut()
-            setOtpRequired(false)
-            setError('Too many incorrect attempts. Please login again.')
-            return
-          }
-          
-          setOtpError(`Incorrect code. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`)
-        } else if (verifyData?.error === 'OTP has expired') {
-          setOtpError('Verification code has expired. Please click "Resend Code".')
-        } else if (verifyData?.error === 'No OTP found for this email') {
-          setOtpError('No verification code found. Please click "Resend Code".')
-        } else if (verifyData?.error === 'Too many incorrect attempts') {
-          await supabase.auth.signOut()
-          setOtpRequired(false)
-          setError('Too many incorrect attempts. Please login again.')
-          return
-        } else {
-          setOtpError(verifyData?.error || 'Verification failed')
-        }
-        return
-      }
-
-      console.log('[Login] OTP verified successfully')
-      
-      // Complete login for admin user
-      await completeLogin(authenticatedProfile)
-
-    } catch (err) {
-      setOtpLoading(false)
-      console.error('[Login] OTP verification error:', err)
-      setOtpError('An unexpected error occurred. Please try again.')
-    }
-  }
-
-  const handleResendOtp = async () => {
-    setOtpError('')
-    setOtpLoading(true)
-
-    try {
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      const { data: otpData, error: otpResendError } = await supabase.functions.invoke('admin-otp', {
-        body: {
-          action: 'resend',
-          email: authenticatedProfile.email
-        },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`
-        }
-      })
-
-      setOtpLoading(false)
-
-      if (otpResendError || !otpData?.success) {
-        console.error('[Login] OTP resend failed:', otpResendError || otpData)
-        // Don't show error - just use generate instead
-        const { data: genData, error: genError } = await supabase.functions.invoke('admin-otp', {
-          body: {
-            action: 'generate',
-            email: authenticatedProfile.email
-          },
-          headers: {
-            Authorization: `Bearer ${session?.access_token}`
-          }
-        })
-        
-        if (genError || !genData?.success) {
-          setOtpError('Unable to resend code. Please try again.')
-          return
-        }
-      }
-
-      console.log('[Login] OTP resent successfully')
-      
-      setOtpError('')
-      setOtpCode('')
-      setAttemptsLeft(3)
-      
-    } catch (err) {
-      setOtpLoading(false)
-      console.error('[Login] OTP resend error:', err)
-      setOtpError('Failed to resend code. Please try again.')
-    }
-  }
-
   const completeLogin = async (profile) => {
     try {
       // Update last login timestamp
@@ -284,17 +144,6 @@ const Login = ({ onLogin }) => {
     }
   }
 
-  const handleCancelOtp = async () => {
-    // Sign out and reset state
-    await supabase.auth.signOut()
-    setOtpRequired(false)
-    setOtpCode('')
-    setOtpError('')
-    setAuthenticatedProfile(null)
-    setOtpExpiry(null)
-    setAttemptsLeft(3)
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
@@ -312,11 +161,8 @@ const Login = ({ onLogin }) => {
           <p className="text-sm text-muted mt-1">Barangay 178, Camarin, North Caloocan City</p>
         </div>
 
-        {/* OTP Modal removed for defense */}
-
         {/* Regular Login Form */}
-        {!otpRequired && (
-          <div className="bg-white border border-border rounded-2xl p-8 shadow-sm">
+        <div className="bg-white border border-border rounded-2xl p-8 shadow-sm">
             <h2 className="font-heading font-semibold text-xl text-center mb-6">Staff Portal Login</h2>
             
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -359,8 +205,8 @@ const Login = ({ onLogin }) => {
                 </div>
               )}
 
-              <button type="submit" className="btn-primary w-full mt-2" disabled={otpLoading}>
-                {otpLoading ? 'Sending verification code...' : 'Login to Dashboard'}
+              <button type="submit" className="btn-primary w-full mt-2">
+                Login to Dashboard
               </button>
             </form>
 
