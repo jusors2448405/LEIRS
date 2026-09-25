@@ -84,6 +84,8 @@ const Login = ({ onLogin }) => {
       }
 
       // Step 4: Check if user is system_admin - if yes, require OTP
+      // TEMPORARILY DISABLED FOR DEFENSE - OTP feature working but email access issue
+      /*
       if (profile.role === 'system_admin') {
         console.log('[Login] System admin detected, requesting OTP')
         
@@ -124,6 +126,7 @@ const Login = ({ onLogin }) => {
         setOtpExpiry(Date.now() + (otpData.expiresIn * 1000))
         return
       }
+      */
 
       // Step 5: Non-admin user - proceed with regular login
       await completeLogin(profile)
