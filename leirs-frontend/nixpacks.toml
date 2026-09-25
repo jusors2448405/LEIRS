@@ -2,10 +2,10 @@
 nixPkgs = ["nodejs_18"]
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm ci --prefer-offline --no-audit --production=false"]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = ["NODE_OPTIONS='--max-old-space-size=4096' npm run build"]
 
 [start]
 cmd = "npx serve dist -s -l $PORT"

@@ -1,0 +1,17 @@
+{
+  "build": {
+    "command": "npm install --production=false && npm run build",
+    "output": "dist",
+    "environment": {
+      "NODE_VERSION": "18.x",
+      "NODE_OPTIONS": "--max_old_space_size=4096"
+    }
+  },
+  "deploy": {
+    "production": {
+      "buildCommand": "npm run build",
+      "installCommand": "npm ci --prefer-offline",
+      "distDir": "dist"
+    }
+  }
+}
