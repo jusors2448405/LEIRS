@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --force",
-    "build:clean": "rm -rf dist && vite build",
+    "build": "vite build",
+    "build:clean": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "serve dist -s -l $PORT"
