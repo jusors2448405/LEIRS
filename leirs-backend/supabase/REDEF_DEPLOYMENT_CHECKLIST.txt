@@ -1,0 +1,170 @@
+═══════════════════════════════════════════════════════════════════════════════
+  LEIRS EMAIL NOTIFICATIONS - REDEF DEPLOYMENT CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 PRE-DEPLOYMENT CHECKLIST
+────────────────────────────────────────────────────────────────────────────────
+[ ] Supabase CLI installed (npm install -g supabase)
+[ ] Resend account created (https://resend.com/)
+[ ] Resend API key obtained (https://resend.com/api-keys)
+[ ] Supabase project ref ready: kyvhyhmqwcxbloiliojw
+
+
+🚀 DEPLOYMENT STEPS (15 minutes)
+────────────────────────────────────────────────────────────────────────────────
+[ ] Step 1: Navigate to backend
+    cd leirs-backend
+
+[ ] Step 2: Login to Supabase
+    supabase login
+
+[ ] Step 3: Link project
+    supabase link --project-ref kyvhyhmqwcxbloiliojw
+
+[ ] Step 4: Set secrets
+    supabase secrets set RESEND_API_KEY=re_your_actual_key_here
+    supabase secrets set FROM_EMAIL="LEIRS Barangay <onboarding@resend.dev>"
+
+[ ] Step 5: Deploy Edge Function
+    supabase functions deploy send-email --no-verify-jwt
+    
+    ⚠️ IMPORTANT: Copy the Function URL from output!
+
+[ ] Step 6: Update frontend .env
+    Open: leirs-frontend\.env
+    Update: VITE_EMAIL_API_URL=https://kyvhyhmqwcxbloiliojw.supabase.co/functions/v1/send-email
+
+[ ] Step 7: Restart dev server
+    cd ..\leirs-frontend
+    npm run dev
+
+
+🧪 TESTING CHECKLIST
+────────────────────────────────────────────────────────────────────────────────
+[ ] Test 1: Send test email via PowerShell
+    $body = @{to="your-email@example.com"; subject="Test"; body="Works!"} | ConvertTo-Json
+    Invoke-RestMethod -Uri "YOUR_FUNCTION_URL" -Method POST -ContentType "application/json" -Body $body
+
+[ ] Test 2: Verify email received (check spam folder)
+
+[ ] Test 3: Check function logs
+    supabase functions logs send-email
+
+[ ] Test 4: Verify Resend dashboard shows sent email
+    https://resend.com/emails
+
+
+📧 EMAIL TEMPLATE TESTING (REDEF Demo)
+────────────────────────────────────────────────────────────────────────────────
+[ ] Email 1: Incident Submitted
+    - Create new incident with complainant_email
+    - Verify "Incident Report Received" email sent
+    - Check email content and formatting
+
+[ ] Email 2: Status Updated
+    - Update incident status (Pending → Under Investigation)
+    - Verify "Status Update" email sent
+    - Check previous/new status shown correctly
+
+[ ] Email 3: Mediation Scheduled
+    - Schedule mediation with date/time/mediator
+    - Verify "Mediation Scheduled" email sent
+    - Check mediation details included
+
+[ ] Email 4: Resolution Completed
+    - Mark case as resolved with notes
+    - Verify "Case Resolution" email sent
+    - Check resolution details included
+
+
+✅ READY FOR REDEF CHECKLIST
+────────────────────────────────────────────────────────────────────────────────
+[ ] Edge Function deployed without errors
+[ ] Function URL added to frontend .env
+[ ] Dev server restarted
+[ ] Test email successfully received
+[ ] All 4 email templates tested and working
+[ ] Emails arriving in inbox (not spam)
+[ ] Email formatting looks professional
+[ ] Function logs show no errors
+[ ] Resend dashboard shows delivery success
+[ ] Ready to demonstrate live at REDEF
+
+
+🔍 TROUBLESHOOTING (If Issues Occur)
+────────────────────────────────────────────────────────────────────────────────
+Issue: "RESEND_API_KEY not configured"
+Fix:  supabase secrets list
+      supabase secrets set RESEND_API_KEY=re_your_key
+
+Issue: Email not delivered
+Fix:  1. Check spam folder
+      2. supabase functions logs send-email
+      3. Check https://resend.com/emails
+      4. Verify FROM_EMAIL uses onboarding@resend.dev
+
+Issue: Function not found
+Fix:  supabase functions list
+      supabase functions deploy send-email --no-verify-jwt
+
+Issue: Frontend not sending emails
+Fix:  1. Verify VITE_EMAIL_API_URL in .env
+      2. Restart dev server
+      3. Check browser console for errors
+      4. Verify incident has complainant_email field
+
+
+📚 DOCUMENTATION REFERENCE
+────────────────────────────────────────────────────────────────────────────────
+Deployment Guide:    leirs-backend\supabase\REDEF_EMAIL_SETUP.md
+Quick Commands:      leirs-backend\supabase\QUICK_START.txt
+Edge Function Code:  leirs-backend\supabase\functions\send-email\index.ts
+Email Hook Code:     leirs-frontend\src\hooks\useComplainantEmail.js
+Integration Guide:   See artifacts in Kiro session
+
+
+⏱️ TIME ESTIMATES
+────────────────────────────────────────────────────────────────────────────────
+Supabase CLI setup:           2 minutes
+Resend account creation:      3 minutes
+Edge Function deployment:     5 minutes
+Frontend configuration:       2 minutes
+Testing all 4 templates:     10 minutes
+────────────────────────────────────────────────────────────────────────────────
+TOTAL SETUP TIME:            ~20 minutes
+
+
+💰 COST
+────────────────────────────────────────────────────────────────────────────────
+Supabase Edge Functions:  FREE (500K invocations/month)
+Resend Free Tier:         FREE (100 emails/day, 3,000/month)
+────────────────────────────────────────────────────────────────────────────────
+TOTAL COST FOR REDEF:    $0/month
+
+
+🎯 REDEF DEMO FLOW
+────────────────────────────────────────────────────────────────────────────────
+1. Create Incident → Complainant receives "Incident Report Received"
+2. Update Status   → Complainant receives "Status Update"
+3. Schedule Mediation → Complainant receives "Mediation Scheduled"
+4. Resolve Case    → Complainant receives "Case Resolution"
+────────────────────────────────────────────────────────────────────────────────
+Total Demo Time:     5 minutes
+Total Emails Sent:   4 professional notifications
+
+
+🎉 SUCCESS INDICATORS
+────────────────────────────────────────────────────────────────────────────────
+✅ Edge Function deployed
+✅ Test email received
+✅ All 4 templates working
+✅ Emails professionally formatted
+✅ Arriving promptly (within seconds)
+✅ Not landing in spam
+✅ Zero errors in logs
+✅ Ready for live demonstration
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  Start Deployment: leirs-backend\supabase\REDEF_EMAIL_SETUP.md
+═══════════════════════════════════════════════════════════════════════════════

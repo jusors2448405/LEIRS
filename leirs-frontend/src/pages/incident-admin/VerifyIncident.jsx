@@ -5,6 +5,7 @@ import {
   User, Phone, MapPin, FileText, Calendar, Clock, Tag 
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import CaseRoutingDecision from '../../components/CaseRoutingDecision'
 
 const VerifyIncident = () => {
   const { id } = useParams()
@@ -14,7 +15,8 @@ const VerifyIncident = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [step, setStep] = useState(1) // 1: View, 2: Edit, 3: Review, 4: Forward
+  const [step, setStep] = useState(1) // 1: View, 2: Edit, 3: Review, 4: Routing Decision, 5: Success
+  const [routingDecision, setRoutingDecision] = useState(null) // Store routing decision temporarily
   
   const [formData, setFormData] = useState({
     incident_type: '',
@@ -92,27 +94,61 @@ const VerifyIncident = () => {
     setStep(3) // Move to review step
   }
 
-  const handleForward = async () => {
+  const handleProceedToRouting = () => {
+    // Move to routing decision step
+    setStep(4)
+  }
+
+  const handleRoutingDecision = async (decision) => {
     setSaving(true)
     setError('')
 
-    // Update status to "Under Investigation" to indicate forwarded to Case Documentation
-    const { error: updateError } = await supabase
-      .from('incidents')
-      .update({
-        status: 'Under Investigation',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
+    try {
+      // Store routing decision temporarily
+      setRoutingDecision(decision)
 
-    if (updateError) {
-      setError(updateError.message)
+      // Update incident status based on routing decision
+      let newStatus = 'REVIEWED' // Default
+      
+      if (decision.decision === 'archive') {
+        newStatus = 'Closed'
+      } else if (decision.decision === 'pnp_referral') {
+        newStatus = 'For Mediation' // This makes it appear in Dispatch pending
+      } else if (decision.decision === 'barangay_case') {
+        newStatus = 'REVIEWED' // Will be picked up by Case Documentation
+      }
+
+      const { error: updateError } = await supabase
+        .from('incidents')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString()
+          // TODO: Add routing_decision fields when database is migrated
+          // routing_decision: decision.decision,
+          // routing_reason: decision.reason,
+          // routing_decided_at: decision.decidedAt
+        })
+        .eq('id', id)
+
+      if (updateError) {
+        setError(updateError.message)
+        setSaving(false)
+        return
+      }
+
+      // Refresh incident data
+      await fetchIncident()
+      
       setSaving(false)
-      return
+      setStep(5) // Success step
+    } catch (err) {
+      setError(err.message)
+      setSaving(false)
     }
+  }
 
-    setSaving(false)
-    setStep(4) // Success step
+  const handleCancelRouting = () => {
+    setStep(3) // Go back to review step
   }
 
   const formatDate = (dateStr) => {
@@ -164,8 +200,51 @@ const VerifyIncident = () => {
     )
   }
 
-  // Step 4: Success - Forwarded
-  if (step === 4) {
+  // Step 5: Success - Routed
+  if (step === 5) {
+    const getSuccessMessage = () => {
+      if (!routingDecision) return { title: 'Incident Reviewed', description: 'Ready for processing' };
+      
+      switch (routingDecision.decision) {
+        case 'barangay_case':
+          return {
+            title: 'Routed to Barangay Case Process',
+            description: `Incident ${incident.incident_number} is now ready for Case Documentation and mediation`,
+            nextAction: 'Case Admin will create case documentation',
+            color: 'blue'
+          };
+        case 'pnp_referral':
+          return {
+            title: 'Referred to PNP / Law Enforcement',
+            description: `Incident ${incident.incident_number} has been forwarded to the Dispatch Module for police action`,
+            nextAction: 'Dispatch Admin will assign responding officers',
+            color: 'red'
+          };
+        case 'archive':
+          return {
+            title: 'Incident Archived',
+            description: `Incident ${incident.incident_number} has been closed and archived`,
+            nextAction: 'No further action required',
+            color: 'gray'
+          };
+        default:
+          return {
+            title: 'Incident Processed',
+            description: `Incident ${incident.incident_number} has been processed`,
+            nextAction: '',
+            color: 'green'
+          };
+      }
+    };
+
+    const successInfo = getSuccessMessage();
+    const colorClasses = {
+      blue: 'bg-blue-50 border-blue-200 text-blue-800',
+      red: 'bg-red-50 border-red-200 text-red-800',
+      gray: 'bg-gray-50 border-gray-200 text-gray-800',
+      green: 'bg-green-50 border-green-200 text-green-800'
+    };
+
     return (
       <div className="space-y-6">
         <Link to="/incident-admin" className="inline-flex items-center gap-2 text-muted hover:text-primary">
@@ -173,22 +252,44 @@ const VerifyIncident = () => {
           <span>Back to Dashboard</span>
         </Link>
 
-        <div className="bg-green-50 border border-green-200 rounded-2xl overflow-hidden">
+        <div className={`border-2 rounded-2xl overflow-hidden ${colorClasses[successInfo.color]}`}>
           <div className="px-8 py-6 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle size={28} className="text-green-600" />
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+              successInfo.color === 'blue' ? 'bg-blue-100' :
+              successInfo.color === 'red' ? 'bg-red-100' :
+              successInfo.color === 'gray' ? 'bg-gray-100' :
+              'bg-green-100'
+            }`}>
+              <CheckCircle size={28} className={
+                successInfo.color === 'blue' ? 'text-blue-600' :
+                successInfo.color === 'red' ? 'text-red-600' :
+                successInfo.color === 'gray' ? 'text-gray-600' :
+                'text-green-600'
+              } />
             </div>
-            <div>
-              <h2 className="font-heading font-bold text-lg text-green-800">
-                Incident Successfully Forwarded
+            <div className="flex-1">
+              <h2 className="font-heading font-bold text-lg mb-1">
+                {successInfo.title}
               </h2>
-              <p className="text-sm text-green-700 mt-0.5">
-                Incident {incident.incident_number} has been forwarded to Case Documentation
+              <p className="text-sm leading-relaxed">
+                {successInfo.description}
               </p>
+              {successInfo.nextAction && (
+                <p className="text-xs mt-2 font-medium">
+                  → {successInfo.nextAction}
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="px-8 py-5 border-t border-green-200 bg-white flex gap-3">
+          {routingDecision?.reason && (
+            <div className="px-8 py-4 border-t bg-white/50">
+              <p className="text-xs font-semibold text-text uppercase tracking-wide mb-1">Routing Notes:</p>
+              <p className="text-sm">{routingDecision.reason}</p>
+            </div>
+          )}
+
+          <div className="px-8 py-5 border-t bg-white flex gap-3">
             <Link to="/incident-admin" className="btn-primary">
               Return to Dashboard
             </Link>
@@ -211,7 +312,11 @@ const VerifyIncident = () => {
             <span>Back to Dashboard</span>
           </Link>
           <h1 className="text-2xl font-heading font-bold text-text mb-1">
-            {step === 1 ? 'Review Incident' : step === 2 ? 'Edit Incident Details' : 'Confirm & Forward'}
+            {step === 1 ? 'Review Incident' : 
+             step === 2 ? 'Edit Incident Details' : 
+             step === 3 ? 'Confirm Details' :
+             step === 4 ? 'Case Routing Decision' :
+             'Processing Complete'}
           </h1>
           <p className="text-muted">
             Incident {incident?.incident_number}
@@ -240,7 +345,14 @@ const VerifyIncident = () => {
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
               3
             </div>
-            <span className="text-sm font-medium hidden sm:inline">Forward</span>
+            <span className="text-sm font-medium hidden sm:inline">Confirm</span>
+          </div>
+          <div className="flex-1 h-0.5 bg-border mx-2"></div>
+          <div className={`flex items-center gap-2 ${step >= 4 ? 'text-primary' : 'text-muted'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 4 ? 'bg-primary text-white' : 'bg-gray-200'}`}>
+              4
+            </div>
+            <span className="text-sm font-medium hidden sm:inline">Route</span>
           </div>
         </div>
       </div>
@@ -362,12 +474,11 @@ const VerifyIncident = () => {
                   Edit Details
                 </button>
                 <button
-                  onClick={handleForward}
-                  disabled={saving}
+                  onClick={handleProceedToRouting}
                   className="btn-primary flex items-center gap-2"
                 >
                   <Send size={18} />
-                  {saving ? 'Forwarding...' : 'Forward to Case Documentation'}
+                  Proceed to Routing Decision
                 </button>
               </>
             )}
@@ -390,10 +501,12 @@ const VerifyIncident = () => {
                 >
                   <option value="">Select type</option>
                   <option value="Theft">Theft</option>
-                  <option value="Assault">Assault</option>
-                  <option value="Vandalism">Vandalism</option>
-                  <option value="Noise Complaint">Noise Complaint</option>
-                  <option value="Traffic Violation">Traffic Violation</option>
+                  <option value="Assault / Physical Injury">Assault / Physical Injury</option>
+                  <option value="Vandalism / Property Damage">Vandalism / Property Damage</option>
+                  <option value="Domestic Dispute">Domestic Dispute</option>
+                  <option value="Noise Complaint / Public Disturbance">Noise Complaint / Public Disturbance</option>
+                  <option value="Traffic Incident">Traffic Incident</option>
+                  <option value="Lost and Found">Lost and Found</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
@@ -500,6 +613,17 @@ const VerifyIncident = () => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Step 4: Routing Decision */}
+      {step === 4 && (
+        <div className="bg-white border border-border rounded-xl p-6">
+          <CaseRoutingDecision
+            incident={incident}
+            onRouting={handleRoutingDecision}
+            onCancel={handleCancelRouting}
+          />
         </div>
       )}
     </div>

@@ -1,0 +1,106 @@
+================================================================================
+PHASE 1 CONSOLIDATED VERIFICATION QUERY - INSTRUCTIONS
+================================================================================
+
+FILE: leirs-backend/database/PHASE_1_CONSOLIDATED_VERIFICATION.sql
+
+This query provides a single consolidated verification output that checks:
+
+1. ✅ incidents table columns (5 columns: 2 new + 3 existing)
+2. ✅ case_documentations table columns (2 new columns)
+3. ✅ Indexes (4 indexes created)
+4. ✅ Record counts (incidents and case_documentations)
+5. ✅ Data integrity (dispatch_required and current_stage values)
+6. ✅ RLS policies (verify unchanged)
+7. ✅ Final deployment status
+
+================================================================================
+EXECUTION STEPS
+================================================================================
+
+1. Open Supabase Console: https://app.supabase.com/projects
+
+2. Select project: LEIRS-REVISE
+
+3. Navigate to: SQL Editor → New Query
+
+4. Copy the entire contents of:
+   leirs-backend/database/PHASE_1_CONSOLIDATED_VERIFICATION.sql
+
+5. Paste into the SQL Editor
+
+6. Click RUN button (or press Ctrl+Enter)
+
+7. Wait for query to complete (should be fast, <5 seconds)
+
+8. Review the results in the output panel
+
+================================================================================
+EXPECTED RESULTS
+================================================================================
+
+SECTION 1: incidents TABLE - COLUMN VERIFICATION
+✅ NEW: complainant_email | ✅ EXISTS | VARCHAR(255), nullable
+✅ NEW: complainant_address | ✅ EXISTS | TEXT, nullable
+✅ EXISTING: respondent_name | ✅ EXISTS | TEXT, nullable
+✅ EXISTING: respondent_contact | ✅ EXISTS | TEXT, nullable
+✅ NEW: respondent_address | ✅ EXISTS | TEXT, nullable
+
+SECTION 2: case_documentations TABLE - COLUMN VERIFICATION
+✅ NEW: current_stage | ✅ EXISTS | VARCHAR(50), nullable
+✅ NEW: dispatch_required | ✅ EXISTS | BOOLEAN, default FALSE
+
+SECTION 3: INDEXES - VERIFICATION
+✅ Index: idx_incidents_complainant_email | ✅ EXISTS | On incidents(complainant_email)
+✅ Index: idx_incidents_respondent_address | ✅ EXISTS | On incidents(respondent_address)
+✅ Index: idx_case_documentations_current_stage | ✅ EXISTS | On case_documentations(current_stage)
+✅ Index: idx_case_documentations_dispatch_required | ✅ EXISTS | On case_documentations(dispatch_required)
+
+SECTION 4: RECORD COUNTS - DATA INTEGRITY
+Total incidents records | [Your actual count, e.g., 15] | incidents table
+Total case_documentations records | [Your actual count, e.g., 8] | case_documentations table
+
+SECTION 5: DATA INTEGRITY - BACKWARD COMPATIBILITY
+Existing cases with dispatch_required = FALSE | [Should equal total case_documentations] | Should be equal to total case_documentations
+Existing cases with current_stage IS NOT NULL | 0 | Should be 0 (legacy cases have NULL)
+Existing cases with dispatch_required = TRUE | 0 | Should be 0 (no explicit PNP referrals yet)
+
+SECTION 6: RLS POLICIES - VERIFICATION
+RLS policies on incidents table | [Count] | Should be unchanged from before Phase 1
+RLS policies on case_documentations table | [Count] | Should be unchanged from before Phase 1
+RLS policies on case_parties table | [Count] | Should be unchanged
+RLS policies on case_summons table | [Count] | Should be unchanged
+RLS policies on barangay_hearings table | [Count] | Should be unchanged
+RLS policies on mediation_records table | [Count] | Should be unchanged
+
+SECTION 7: FINAL DEPLOYMENT STATUS
+Phase 1 Deployment | ✅ SUCCESSFUL | All 5 new columns deployed
+
+================================================================================
+SUCCESS CRITERIA
+================================================================================
+
+Phase 1 deployment is SUCCESSFUL if:
+
+1. ✅ All 5 new columns show "✅ EXISTS"
+2. ✅ All 4 indexes show "✅ EXISTS"
+3. ✅ Record counts are unchanged from before deployment
+4. ✅ Existing cases with dispatch_required = FALSE equals total case_documentations
+5. ✅ Existing cases with current_stage IS NOT NULL = 0
+6. ✅ Existing cases with dispatch_required = TRUE = 0
+7. ✅ All RLS policy counts are unchanged
+8. ✅ Final status shows "✅ SUCCESSFUL"
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+After verification query passes:
+
+1. Share the complete query output with verification results
+2. Confirm all checks passed
+3. Provide approval to proceed to Phase 2
+
+DO NOT start Phase 2 until all verification checks pass.
+
+================================================================================

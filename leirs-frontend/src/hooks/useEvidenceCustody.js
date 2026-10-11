@@ -51,6 +51,8 @@ const useEvidenceCustody = (evidenceId) => {
    * @param {string} params.toUser - User receiving custody (optional)
    * @param {string} params.location - Location of action (optional)
    * @param {string} params.notes - Additional notes (optional)
+   * @param {string} params.performedBy - Name of person who performed the action (required)
+   * @param {string} params.transferReason - Reason for transfer (required for Transferred/Released)
    * @param {string} params.createdBy - User recording this action
    * @param {Date} params.actionAt - When the action occurred (defaults to now)
    * @returns {{ error: string|null, data: Object|null }}
@@ -61,11 +63,23 @@ const useEvidenceCustody = (evidenceId) => {
     toUser = null,
     location = null,
     notes = null,
+    performedBy,
+    transferReason = null,
     createdBy,
     actionAt = null
   }) => {
     if (!evidenceId) {
       return { error: 'No evidence selected', data: null };
+    }
+
+    // Validate required fields
+    if (!performedBy?.trim()) {
+      return { error: 'Performed By is required', data: null };
+    }
+
+    // Require transfer_reason for certain actions
+    if ((actionType === 'Transferred' || actionType === 'Released') && !transferReason?.trim()) {
+      return { error: 'Transfer reason is required for this action', data: null };
     }
 
     setSaving(true);
@@ -106,6 +120,8 @@ const useEvidenceCustody = (evidenceId) => {
           to_user: toUser,
           location: location,
           notes: notes,
+          performed_by: performedBy,
+          transfer_reason: transferReason,
           action_at: newActionTimestamp.toISOString(),
           created_by: createdBy
         }])
@@ -114,42 +130,34 @@ const useEvidenceCustody = (evidenceId) => {
 
       if (custodyError) throw custodyError;
 
-      // Update evidence status and current custodian
-      let newStatus = 'Logged';
-      let currentCustodian = null;
+      // Update evidence_status based on custody action
+      let newStatus = 'Collected';
 
       switch (actionType) {
         case 'Received':
-          newStatus = 'In Custody';
-          currentCustodian = toUser;
+          newStatus = 'Collected';
           break;
         case 'Transferred':
-          newStatus = 'In Custody';
-          currentCustodian = toUser;
+          newStatus = 'Under Review';
           break;
         case 'Released':
-          newStatus = 'Released';
-          currentCustodian = null;
+          newStatus = 'Submitted to Authority';
           break;
         case 'Returned':
-          newStatus = 'Returned';
-          currentCustodian = toUser || fromUser;
+          newStatus = 'Under Review';
           break;
         case 'In Court':
-          newStatus = 'In Court';
-          currentCustodian = 'Court';
+          newStatus = 'Submitted to Authority';
           break;
         case 'Archived':
           newStatus = 'Archived';
-          currentCustodian = null;
           break;
       }
 
       const { error: updateError } = await supabase
         .from('evidence')
         .update({
-          status: newStatus,
-          current_custodian: currentCustodian
+          evidence_status: newStatus
         })
         .eq('id', evidenceId);
 

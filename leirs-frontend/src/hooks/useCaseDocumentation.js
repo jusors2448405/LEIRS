@@ -159,6 +159,15 @@ const useCaseDocumentation = (incidentId) => {
           return { error: null } // case doc itself succeeded
         }
 
+        // ── Auto-create case_parties from incident data (Phase 2) ──────────────────
+        // Auto-populate case_parties with complainant and respondent from incidents table
+        // This eliminates manual re-entry during Case Parties workflow
+        const autoCreateErr = await autoCreateCasePartiesFromIncident()
+        if (autoCreateErr) {
+          // Non-fatal: case doc created successfully, parties can be added manually
+          console.warn('Auto-create parties warning:', autoCreateErr)
+        }
+
         setSaving(false)
         return { error: null }
       }
@@ -172,6 +181,91 @@ const useCaseDocumentation = (incidentId) => {
     setError(msg)
     return { error: msg }
   }
+
+  // ── Auto-create case_parties from incident data ────────────────────────
+  // Phase 2: Automatically creates Complainant and Respondent records from
+  // incidents table to eliminate manual re-entry in Case Parties tab
+  const autoCreateCasePartiesFromIncident = useCallback(async () => {
+    if (!incidentId) return null
+
+    try {
+      // Fetch the incident to get complainant and respondent info
+      const { data: incident, error: incidentError } = await supabase
+        .from('incidents')
+        .select(
+          'complainant_name, complainant_email, complainant_address, ' +
+          'respondent_name, respondent_contact, respondent_address'
+        )
+        .eq('id', incidentId)
+        .single()
+
+      if (incidentError) {
+        console.warn('Could not fetch incident for party auto-creation:', incidentError.message)
+        return null // Non-fatal
+      }
+
+      if (!incident) return null
+
+      // Check if parties already exist to avoid duplicates
+      const { data: existingParties, error: checkError } = await supabase
+        .from('case_parties')
+        .select('id')
+        .eq('incident_id', incidentId)
+
+      if (checkError) {
+        console.warn('Could not check existing parties:', checkError.message)
+        return null
+      }
+
+      // If parties already exist, don't create duplicates
+      if (existingParties && existingParties.length > 0) {
+        console.log('Parties already exist for this incident, skipping auto-creation')
+        return null
+      }
+
+      // Create Complainant party if complainant_name exists
+      if (incident.complainant_name && incident.complainant_name.trim()) {
+        const { error: complainantError } = await supabase
+          .from('case_parties')
+          .insert([{
+            incident_id: incidentId,
+            party_type: 'Complainant',
+            name: incident.complainant_name.trim(),
+            contact: incident.complainant_contact || null,
+            email: incident.complainant_email || null,
+          }])
+
+        if (complainantError) {
+          console.warn('Failed to create Complainant party:', complainantError.message)
+          return complainantError.message
+        }
+      }
+
+      // Create Respondent party if respondent_name exists
+      if (incident.respondent_name && incident.respondent_name.trim()) {
+        const { error: respondentError } = await supabase
+          .from('case_parties')
+          .insert([{
+            incident_id: incidentId,
+            party_type: 'Respondent',
+            name: incident.respondent_name.trim(),
+            contact: incident.respondent_contact || null,
+            email: null, // Respondent email typically not available at report time
+          }])
+
+        if (respondentError) {
+          console.warn('Failed to create Respondent party:', respondentError.message)
+          return respondentError.message
+        }
+      }
+
+      console.log('Case parties auto-created successfully from incident data')
+      return null // Success
+    } catch (err) {
+      console.error('Error auto-creating case parties:', err)
+      return err.message // Non-fatal
+    }
+  }, [incidentId])
 
   // ── Update ────────────────────────────────────────────────────────────────
 
@@ -224,6 +318,7 @@ const useCaseDocumentation = (incidentId) => {
     fetchCaseDoc,
     createCaseDoc,
     updateCaseDoc,
+    autoCreateCasePartiesFromIncident,
   }
 }
 

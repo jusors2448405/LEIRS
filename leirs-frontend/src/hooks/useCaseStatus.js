@@ -338,7 +338,27 @@ const useCaseStatus = (filters = {}) => {
         .from('evidence')
         .select('*')
         .eq('incident_id', incidentId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false});
+
+      // Fetch evidence custody records (if evidence exists)
+      let evidenceCustody = [];
+      if (evidence && evidence.length > 0) {
+        const evidenceIds = evidence.map(e => e.id);
+        const { data: custodyData, error: custodyError } = await supabase
+          .from('evidence_custody')
+          .select('*')
+          .in('evidence_id', evidenceIds)
+          .order('action_at', { ascending: false});
+        
+        evidenceCustody = custodyData || [];
+      }
+
+      // Fetch case parties
+      const { data: parties, error: partiesError } = await supabase
+        .from('case_parties')
+        .select('*')
+        .eq('case_id', caseDoc.id)
+        .order('created_at', { ascending: true });
 
       return {
         error: null,
@@ -347,7 +367,9 @@ const useCaseStatus = (filters = {}) => {
           incident,
           dispatches: dispatches || [],
           caseUpdates: caseUpdates || [],
-          evidence: evidence || []
+          evidence: evidence || [],
+          evidenceCustody: evidenceCustody || [],
+          parties: parties || []
         }
       };
     } catch (err) {
@@ -359,6 +381,7 @@ const useCaseStatus = (filters = {}) => {
   /**
    * Update case status
    * Only updates case_status, does NOT touch officer assignment
+   * Sends email notification to complainant after successful update
    * @param {string} incidentId - UUID of the incident
    * @param {string} newStatus - New case status
    * @param {string} notes - Optional status update notes
@@ -374,6 +397,8 @@ const useCaseStatus = (filters = {}) => {
 
       if (fetchError) throw fetchError;
       if (!caseDoc) throw new Error('Case documentation not found');
+
+      const previousStatus = caseDoc.case_status;
 
       // Update case status
       const updatedNotes = notes.trim()
@@ -403,6 +428,98 @@ const useCaseStatus = (filters = {}) => {
         // Non-fatal: case status was updated successfully
       }
 
+      // Send email notification to complainant (non-blocking)
+      try {
+        const { data: incident, error: incidentError } = await supabase
+          .from('incidents')
+          .select('complainant_email')
+          .eq('id', incidentId)
+          .single();
+
+        if (incidentError) {
+          console.warn('[useCaseStatus] Failed to fetch complainant email:', incidentError);
+        } else if (incident?.complainant_email) {
+          console.log('[useCaseStatus] Sending status update email to:', incident.complainant_email);
+          
+          // Send email via Edge Function
+          const emailApiUrl = import.meta.env.VITE_EMAIL_API_URL;
+          if (!emailApiUrl) {
+            console.warn('[useCaseStatus] Email API URL not configured. Email skipped.');
+          } else {
+            // Get incident details for email context
+            const { data: incidentDetails, error: detailsError } = await supabase
+              .from('incidents')
+              .select('incident_number, incident_type, complainant_name')
+              .eq('id', incidentId)
+              .single();
+
+            if (detailsError) {
+              console.warn('[useCaseStatus] Failed to fetch incident details for email:', detailsError);
+            } else {
+              const subject = `LEIRS: Status Update - ${incidentDetails.incident_number}`;
+              const body = `
+Dear ${incidentDetails.complainant_name || 'Valued Citizen'},
+
+The status of your incident report has been updated.
+
+Reference Number: ${incidentDetails.incident_number}
+Incident Type: ${incidentDetails.incident_type}
+
+Status Update:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Previous Status: ${previousStatus}
+Current Status: ${newStatus}
+Updated: ${new Date().toLocaleDateString('en-PH', { 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+})}
+
+${newStatus === 'Under Investigation' ? 'Your case is now being actively investigated by our team.' : ''}
+${newStatus === 'For Mediation' ? 'Your case has been scheduled for mediation. You will receive separate notification with the schedule details.' : ''}
+${newStatus === 'Resolved' ? 'Your case has been resolved. Thank you for your patience throughout this process.' : ''}
+${newStatus === 'Closed' ? 'Your case has been officially closed. If you have concerns, please contact our office.' : ''}
+
+You can track your case progress using reference number: ${incidentDetails.incident_number}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Best regards,
+Barangay LEIRS Team
+Law Enforcement and Incident Reporting System
+              `.trim();
+
+              // Non-blocking fetch: don't await, don't throw
+              fetch(emailApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  to: incident.complainant_email,
+                  subject: subject,
+                  body: body,
+                  html: body
+                })
+              }).then(response => {
+                if (response.ok) {
+                  console.log('[useCaseStatus] Status update email sent successfully');
+                } else {
+                  console.warn('[useCaseStatus] Email API responded with error:', response.status);
+                }
+              }).catch(err => {
+                console.warn('[useCaseStatus] Failed to send status update email:', err.message);
+              });
+            }
+          }
+        } else {
+          console.log('[useCaseStatus] No complainant email found for incident:', incidentId);
+        }
+      } catch (emailError) {
+        // Email failure should not block status update
+        console.warn('[useCaseStatus] Email notification error (non-fatal):', emailError);
+      }
+
       return { error: null, data: updatedCase };
     } catch (err) {
       console.error('Error updating case status:', err);
@@ -420,6 +537,191 @@ const useCaseStatus = (filters = {}) => {
     fetchCaseStats();
   }, [fetchCaseStats]);
 
+  /**
+   * Determine current stage of the case
+   * Returns stage name, handler role, and next action
+   * 
+   * @param {Object} caseData - Complete case data
+   * @param {Object} stages - Workflow stages (summons, hearings, mediations, resolutions)
+   * @returns {Object} { stage, handledBy, nextAction, priority }
+   */
+  const determineCurrentStage = (caseData, stages) => {
+    if (!caseData || !caseData.caseDoc) {
+      return {
+        stage: 'Unknown',
+        handledBy: 'N/A',
+        nextAction: 'N/A',
+        priority: 'low'
+      };
+    }
+
+    const { caseDoc, dispatches } = caseData;
+    const latestDispatch = dispatches?.[0];
+
+    // 1. Check if case is closed (final state)
+    if (caseDoc.case_status === 'Closed') {
+      return {
+        stage: 'Case Closed',
+        handledBy: 'Case Status Admin',
+        nextAction: 'No further action required',
+        priority: 'low'
+      };
+    }
+
+    // 2. Check if resolved (awaiting closure)
+    if (caseDoc.case_status === 'Resolved') {
+      return {
+        stage: 'Case Resolved',
+        handledBy: 'Case Admin',
+        nextAction: 'Awaiting case closure',
+        priority: 'low'
+      };
+    }
+
+    // 3. Check active dispatch workflow (takes priority when active)
+    if (latestDispatch && !['Completed', 'Cancelled'].includes(latestDispatch.dispatch_status)) {
+      const dispatchStageMap = {
+        'Pending Station Response': {
+          stage: 'Awaiting Station Response',
+          handledBy: 'Police Station / Dispatch Admin',
+          nextAction: 'Wait for station to accept/decline dispatch'
+        },
+        'Station Accepted': {
+          stage: 'Station Accepted Dispatch',
+          handledBy: 'Police Station',
+          nextAction: 'Assign officer to incident'
+        },
+        'Station Declined': {
+          stage: 'Dispatch Declined',
+          handledBy: 'Dispatch Admin',
+          nextAction: 'Reassign to different station or close dispatch'
+        },
+        'Officer Assigned': {
+          stage: 'Officer Assigned',
+          handledBy: 'Assigned Officer',
+          nextAction: 'Officer to respond to incident'
+        },
+        'Dispatched': {
+          stage: 'Dispatch In Progress',
+          handledBy: 'Assigned Officer',
+          nextAction: 'Officer responding to scene'
+        },
+        'Responding': {
+          stage: 'Officer Responding',
+          handledBy: `Officer ${latestDispatch.officer_name}`,
+          nextAction: 'Officer en route to incident location'
+        },
+        'On Scene': {
+          stage: 'Officer On Scene',
+          handledBy: `Officer ${latestDispatch.officer_name}`,
+          nextAction: 'Complete incident response and submit report'
+        }
+      };
+
+      const dispatchInfo = dispatchStageMap[latestDispatch.dispatch_status] || {
+        stage: `Dispatch: ${latestDispatch.dispatch_status}`,
+        handledBy: 'Dispatch Admin',
+        nextAction: 'Monitor dispatch progress'
+      };
+
+      return {
+        ...dispatchInfo,
+        priority: 'high'
+      };
+    }
+
+    // 4. Check active mediation (no outcome yet)
+    if (stages.mediations && stages.mediations.length > 0) {
+      const latestMediation = stages.mediations[0];
+      if (!latestMediation.outcome) {
+        return {
+          stage: 'Under Lupon Mediation',
+          handledBy: 'Case Admin / Lupon Mediator',
+          nextAction: 'Complete mediation session and record outcome',
+          priority: 'high'
+        };
+      }
+    }
+
+    // 5. Check upcoming hearing
+    if (stages.hearings && stages.hearings.length > 0) {
+      const upcomingHearing = stages.hearings.find(h => {
+        const hearingDate = new Date(h.scheduled_date);
+        return hearingDate > new Date() || !h.outcome;
+      });
+
+      if (upcomingHearing) {
+        const hearingDate = new Date(upcomingHearing.scheduled_date);
+        const isUpcoming = hearingDate > new Date();
+        
+        if (isUpcoming) {
+          return {
+            stage: 'Hearing Scheduled',
+            handledBy: 'Case Admin',
+            nextAction: `Attend hearing on ${hearingDate.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+            priority: 'high'
+          };
+        } else {
+          return {
+            stage: 'Hearing Conducted',
+            handledBy: 'Case Admin',
+            nextAction: 'Record hearing outcome',
+            priority: 'high'
+          };
+        }
+      }
+    }
+
+    // 6. Check pending summons
+    if (stages.summons && stages.summons.length > 0) {
+      const unservedSummons = stages.summons.find(s => s.status !== 'Served');
+      if (unservedSummons) {
+        return {
+          stage: 'Summons Issued',
+          handledBy: 'Case Admin',
+          nextAction: 'Serve summons to respondent',
+          priority: 'medium'
+        };
+      }
+    }
+
+    // 7. Check case documentation status
+    if (caseDoc.case_status === 'Under Investigation') {
+      return {
+        stage: 'Under Investigation',
+        handledBy: 'Case Admin',
+        nextAction: 'Continue case investigation and documentation',
+        priority: 'medium'
+      };
+    }
+
+    if (caseDoc.case_status === 'For Mediation') {
+      return {
+        stage: 'Ready for Dispatch',
+        handledBy: 'Dispatch Admin',
+        nextAction: 'Assign police officer for dispatch',
+        priority: 'medium'
+      };
+    }
+
+    if (caseDoc.case_status === 'Pending') {
+      return {
+        stage: 'Pending Review',
+        handledBy: 'Case Admin',
+        nextAction: 'Begin case processing',
+        priority: 'medium'
+      };
+    }
+
+    // Default fallback
+    return {
+      stage: caseDoc.case_status,
+      handledBy: 'Case Admin',
+      nextAction: 'Continue case processing',
+      priority: 'low'
+    };
+  };
+
   return {
     cases,
     loading,
@@ -429,7 +731,8 @@ const useCaseStatus = (filters = {}) => {
     fetchCaseStats,
     fetchCaseDetail,
     updateCaseStatus,
-    getCurrentStatus // Export helper function
+    getCurrentStatus, // Export helper function
+    determineCurrentStage // Export new helper function
   };
 };
 

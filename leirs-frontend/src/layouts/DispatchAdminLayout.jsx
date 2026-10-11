@@ -8,7 +8,8 @@ const DispatchAdminLayout = ({ user, onLogout }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   React.useEffect(() => {
-    if (!user || user.role !== 'dispatch_admin') {
+    // Allow system_admin (full access) OR dispatch_admin (module-specific access)
+    if (!user || (user.role !== 'dispatch_admin' && user.role !== 'system_admin')) {
       navigate('/')
     }
   }, [user, navigate])
@@ -18,7 +19,7 @@ const DispatchAdminLayout = ({ user, onLogout }) => {
   return (
     <div className="min-h-screen">
       <Sidebar
-        role="dispatch_admin"
+        role={user.role} // Pass actual user role to show correct menu
         onLogout={onLogout}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

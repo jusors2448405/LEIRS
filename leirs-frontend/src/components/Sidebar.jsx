@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -21,14 +21,49 @@ import {
 
 const Sidebar = ({ role, onLogout, isOpen, onClose }) => {
   const location = useLocation()
+  const navRef = useRef(null)
+  const scrollPositionRef = useRef(0)
+  const isRestoringRef = useRef(false)
 
   // LEIRS REVISE: Module-Specific Admin Role Menus (6 Roles Only)
+  // System Admin - Full Access to ALL Modules
   const systemAdminMenu = [
-    { name: 'Dashboard', path: '/system-admin', icon: LayoutDashboard },
-    { name: 'Users', path: '/system-admin/users', icon: Users },
-    { name: 'Activity Log', path: '/system-admin/activities', icon: Clock },
-    { name: 'Analytics', path: '/system-admin/analytics', icon: BarChart3 },
-    { name: 'Settings', path: '/system-admin/settings', icon: Settings }
+    // System Administration
+    { name: '🛡️ System Admin', isHeader: true },
+    { name: 'Dashboard', path: '/system-admin', icon: LayoutDashboard, indent: true },
+    { name: 'Users', path: '/system-admin/users', icon: Users, indent: true },
+    { name: 'Activity Log', path: '/system-admin/activities', icon: Clock, indent: true },
+    { name: 'Analytics', path: '/system-admin/analytics', icon: BarChart3, indent: true },
+    { name: 'Settings', path: '/system-admin/settings', icon: Settings, indent: true },
+    
+    // Incident Reporting Module
+    { name: '📋 Incident Reporting', isHeader: true },
+    { name: 'Dashboard', path: '/incident-admin', icon: LayoutDashboard, indent: true },
+    { name: 'New Incident', path: '/incident-admin/new-incident', icon: Plus, indent: true },
+    { name: 'Incident List', path: '/incident-admin/incidents', icon: FileText, indent: true },
+    
+    // Case Documentation Module
+    { name: '📁 Case Documentation', isHeader: true },
+    { name: 'Dashboard', path: '/case-admin', icon: LayoutDashboard, indent: true },
+    { name: 'Forwarded Incidents', path: '/case-admin/forwarded', icon: FileText, indent: true },
+    { name: 'Case Management', path: '/case-admin/cases', icon: Folder, indent: true },
+    
+    // Dispatch Module
+    { name: '📡 Dispatch', isHeader: true },
+    { name: 'Dashboard', path: '/dispatch-admin', icon: LayoutDashboard, indent: true },
+    { name: 'Pending Dispatch', path: '/dispatch-admin/pending', icon: Clock, indent: true },
+    { name: 'Active Dispatches', path: '/dispatch-admin/active', icon: Radio, indent: true },
+    
+    // Evidence Management Module
+    { name: '🔒 Evidence', isHeader: true },
+    { name: 'Dashboard', path: '/evidence-admin', icon: LayoutDashboard, indent: true },
+    { name: 'Evidence', path: '/evidence-admin/evidence', icon: Archive, indent: true },
+    { name: 'Custody', path: '/evidence-admin/custody', icon: Shield, indent: true },
+    
+    // Case Status Monitoring Module
+    { name: '📊 Case Status', isHeader: true },
+    { name: 'Dashboard', path: '/status-admin', icon: LayoutDashboard, indent: true },
+    { name: 'Monitoring', path: '/status-admin/monitoring', icon: Clock, indent: true }
   ]
 
   const incidentAdminMenu = [
@@ -69,7 +104,54 @@ const Sidebar = ({ role, onLogout, isOpen, onClose }) => {
   else if (role === 'evidence_admin') menu = evidenceAdminMenu
   else if (role === 'status_admin') menu = statusAdminMenu
 
-  const handleLinkClick = () => {
+  // ── Preserve scroll position across navigation ────────────────────────────
+  
+  // Save scroll position whenever it changes (but not during restoration)
+  useEffect(() => {
+    const navElement = navRef.current
+    if (!navElement) return
+
+    const handleScroll = () => {
+      // Don't save scroll position while we're restoring it
+      if (!isRestoringRef.current) {
+        scrollPositionRef.current = navElement.scrollTop
+        console.log('[Sidebar] Scroll saved:', navElement.scrollTop)
+      }
+    }
+
+    navElement.addEventListener('scroll', handleScroll, { passive: true })
+    return () => navElement.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Restore scroll position synchronously before browser paint
+  useLayoutEffect(() => {
+    const navElement = navRef.current
+    if (!navElement) return
+
+    const savedPosition = scrollPositionRef.current
+    
+    if (savedPosition > 0) {
+      console.log('[Sidebar] Restoring scroll to:', savedPosition)
+      isRestoringRef.current = true
+      navElement.scrollTop = savedPosition
+      
+      // Use requestAnimationFrame to ensure scroll is applied
+      requestAnimationFrame(() => {
+        if (navRef.current) {
+          navRef.current.scrollTop = savedPosition
+          // Reset flag after a short delay
+          setTimeout(() => {
+            isRestoringRef.current = false
+          }, 100)
+        }
+      })
+    }
+  }, [location.pathname]) // Restore whenever route changes
+
+  const handleLinkClick = (e, path) => {
+    console.log('[Sidebar] Link clicked:', path)
+    console.log('[Sidebar] Event:', e)
+    console.log('[Sidebar] Current location:', location.pathname)
     // Close sidebar on mobile when a link is clicked
     if (onClose) {
       onClose()
@@ -116,18 +198,33 @@ const Sidebar = ({ role, onLogout, isOpen, onClose }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {menu.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={handleLinkClick}
-              className={`sidebar-link ${location.pathname === item.path ? 'active' : ''}`}
-            >
-              <item.icon size={20} />
-              <span>{item.name}</span>
-            </Link>
-          ))}
+        <nav ref={navRef} className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {menu.map((item, index) => {
+            // Render headers (for system admin only)
+            if (item.isHeader) {
+              return (
+                <div
+                  key={`header-${index}`}
+                  className="text-xs font-semibold text-muted uppercase tracking-wider pt-4 pb-2 px-3"
+                >
+                  {item.name}
+                </div>
+              )
+            }
+            
+            // Render regular menu items
+            return (
+              <Link
+                key={`link-${index}-${item.path}`}
+                to={item.path}
+                onClick={(e) => handleLinkClick(e, item.path)}
+                className={`sidebar-link ${location.pathname === item.path ? 'active' : ''} ${item.indent ? 'pl-6' : ''}`}
+              >
+                <item.icon size={20} />
+                <span>{item.name}</span>
+              </Link>
+            )
+          })}
         </nav>
 
         {/* Logout */}

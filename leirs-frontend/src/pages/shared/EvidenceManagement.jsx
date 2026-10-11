@@ -14,6 +14,23 @@ const EVIDENCE_TYPES = [
   'Document', 'Image', 'Video', 'Audio', 'Physical', 'Digital', 'Testimony', 'Other',
 ]
 
+const EVIDENCE_SOURCES = [
+  'Complainant',
+  'Respondent',
+  'Witness',
+  'Officer',
+  'Barangay Personnel',
+  'Unknown/Pending Verification'
+]
+
+const EVIDENCE_STATUSES = [
+  'Collected',
+  'Under Review',
+  'Accepted',
+  'Submitted to Authority',
+  'Archived'
+]
+
 const TYPE_COLORS = {
   Document:  'bg-blue-100 text-blue-700',
   Image:     'bg-green-100 text-green-700',
@@ -31,6 +48,14 @@ const STATUS_COLORS = {
   'For Mediation':       'bg-purple-100 text-purple-700',
   'Resolved':            'bg-green-100 text-green-700',
   'Closed':              'bg-gray-100 text-gray-600',
+}
+
+const EVIDENCE_STATUS_COLORS = {
+  'Collected':              'bg-blue-100 text-blue-700',
+  'Under Review':           'bg-purple-100 text-purple-700',
+  'Accepted':               'bg-green-100 text-green-700',
+  'Submitted to Authority': 'bg-indigo-100 text-indigo-700',
+  'Archived':               'bg-gray-100 text-gray-600',
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -93,6 +118,12 @@ const EMPTY_FORM = {
   file_url: '',
   collected_by: '',
   collected_at: '',
+  evidence_source: 'Complainant',
+  collection_location: '',
+  evidence_status: 'Collected',
+  case_number: '',
+  incident_number: '',
+  dispatch_number: '',
 }
 
 const EvidenceForm = ({ initial, onSave, onCancel, saving, error, title }) => {
@@ -141,6 +172,30 @@ const EvidenceForm = ({ initial, onSave, onCancel, saving, error, title }) => {
           <input type="text" value={form.evidence_name} onChange={(e) => set('evidence_name', e.target.value)}
             placeholder="e.g. CCTV Footage, Witness Statement" className="input-field text-sm" required />
         </div>
+
+        {/* NEW: Evidence Source */}
+        <div>
+          <label className="block text-sm font-medium text-text mb-1.5">Evidence Source <span className="text-red-500">*</span></label>
+          <select value={form.evidence_source} onChange={(e) => set('evidence_source', e.target.value)} className="input-field text-sm" required>
+            {EVIDENCE_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+
+        {/* NEW: Collection Location */}
+        <div>
+          <label className="block text-sm font-medium text-text mb-1.5">Collection Location <span className="text-red-500">*</span></label>
+          <input type="text" value={form.collection_location} onChange={(e) => set('collection_location', e.target.value)}
+            placeholder="e.g. Barangay Hall, Incident Scene" className="input-field text-sm" required />
+        </div>
+
+        {/* NEW: Evidence Status */}
+        <div>
+          <label className="block text-sm font-medium text-text mb-1.5">Evidence Status <span className="text-red-500">*</span></label>
+          <select value={form.evidence_status} onChange={(e) => set('evidence_status', e.target.value)} className="input-field text-sm" required>
+            {EVIDENCE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-text mb-1.5">Collected By</label>
           <input type="text" value={form.collected_by} onChange={(e) => set('collected_by', e.target.value)}
@@ -150,6 +205,25 @@ const EvidenceForm = ({ initial, onSave, onCancel, saving, error, title }) => {
           <label className="block text-sm font-medium text-text mb-1.5">Date &amp; Time Collected</label>
           <input type="datetime-local" value={form.collected_at} onChange={(e) => set('collected_at', e.target.value)}
             className="input-field text-sm" />
+        </div>
+
+        {/* AUTO-POPULATED: Case/Incident/Dispatch Numbers (read-only) */}
+        <div className="sm:col-span-2">
+          <p className="text-xs text-muted font-medium uppercase tracking-wide mb-2">Linked Records (Auto-populated)</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1">Case Number</label>
+              <input type="text" value={form.case_number} className="input-field text-sm bg-gray-50" readOnly />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1">Incident Number</label>
+              <input type="text" value={form.incident_number} className="input-field text-sm bg-gray-50" readOnly />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1">Dispatch Number</label>
+              <input type="text" value={form.dispatch_number} className="input-field text-sm bg-gray-50" readOnly />
+            </div>
+          </div>
         </div>
 
         {/* File picker — auto-fills filename, no storage upload yet */}
@@ -241,8 +315,33 @@ const EvidenceDetailModal = ({ ev, onClose, onEdit, onDelete, canEdit, canDelete
 
         <div className="overflow-y-auto px-6 py-5 space-y-4 flex-1">
           <DetailField icon={Tag}      label="Evidence Name"    value={ev.evidence_name} />
+          <DetailField icon={User}     label="Evidence Source"  value={ev.evidence_source} />
+          <DetailField icon={MapPin}   label="Collection Location" value={ev.collection_location} />
+          {ev.evidence_status && (
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <FileText size={14} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted font-medium uppercase tracking-wide">Evidence Status</p>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold mt-1 ${EVIDENCE_STATUS_COLORS[ev.evidence_status] || 'bg-gray-100 text-gray-600'}`}>
+                  {ev.evidence_status}
+                </span>
+              </div>
+            </div>
+          )}
           <DetailField icon={User}     label="Collected By"     value={ev.collected_by} />
           <DetailField icon={Clock}    label="Collected At"     value={formatDateTime(ev.collected_at)} />
+          {(ev.case_number || ev.incident_number || ev.dispatch_number) && (
+            <div className="pt-3 border-t border-border">
+              <p className="text-xs text-muted font-medium uppercase tracking-wide mb-2">Linked Records</p>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                {ev.case_number && <div><span className="text-muted">Case:</span> <span className="font-mono font-medium">{ev.case_number}</span></div>}
+                {ev.incident_number && <div><span className="text-muted">Incident:</span> <span className="font-mono font-medium">{ev.incident_number}</span></div>}
+                {ev.dispatch_number && <div><span className="text-muted">Dispatch:</span> <span className="font-mono font-medium">{ev.dispatch_number}</span></div>}
+              </div>
+            </div>
+          )}
           <DetailField icon={Paperclip} label="File Name"       value={ev.file_name} />
           {ev.file_url && (
             <div className="flex items-center gap-2">
@@ -314,7 +413,14 @@ const EvidencePanel = ({ incident, role }) => {
   const [addSuccess, setAddSuccess]       = useState('')
 
   const handleCreate = async (fields) => {
-    const { error: err } = await createEvidence(fields)
+    // Auto-populate linking fields from incident
+    const enrichedFields = {
+      ...fields,
+      case_number: incident.case_number || '',
+      incident_number: incident.incident_number || '',
+      dispatch_number: incident.dispatch_number || '',
+    }
+    const { error: err } = await createEvidence(enrichedFields)
     if (!err) {
       setShowAddForm(false)
       setAddSuccess('Evidence record added successfully.')
@@ -342,6 +448,9 @@ const EvidencePanel = ({ incident, role }) => {
           <div>
             <p className="text-xs text-muted font-medium uppercase tracking-wide">Incident</p>
             <p className="font-mono font-bold text-primary">{incident.incident_number}</p>
+            {incident.case_number && (
+              <p className="text-xs text-muted mt-0.5">Case: <span className="font-mono font-semibold">{incident.case_number}</span></p>
+            )}
           </div>
           <StatusBadge status={incident.status} />
         </div>
@@ -391,6 +500,12 @@ const EvidencePanel = ({ incident, role }) => {
         <div className="bg-white border border-primary/20 rounded-xl p-6 shadow-sm">
           <EvidenceForm
             title="Add Evidence"
+            initial={{
+              ...EMPTY_FORM,
+              case_number: incident.case_number || '',
+              incident_number: incident.incident_number || '',
+              dispatch_number: incident.dispatch_number || '',
+            }}
             onSave={handleCreate}
             onCancel={() => setShowAddForm(false)}
             saving={saving}
@@ -405,13 +520,19 @@ const EvidencePanel = ({ incident, role }) => {
           <EvidenceForm
             title="Save Changes"
             initial={{
-              evidence_type: editingEvidence.evidence_type,
-              evidence_name: editingEvidence.evidence_name,
-              description:   editingEvidence.description   || '',
-              file_name:     editingEvidence.file_name     || '',
-              file_url:      editingEvidence.file_url      || '',
-              collected_by:  editingEvidence.collected_by  || '',
-              collected_at:  toDatetimeLocal(editingEvidence.collected_at),
+              evidence_type:       editingEvidence.evidence_type,
+              evidence_name:       editingEvidence.evidence_name,
+              description:         editingEvidence.description         || '',
+              file_name:           editingEvidence.file_name           || '',
+              file_url:            editingEvidence.file_url            || '',
+              collected_by:        editingEvidence.collected_by        || '',
+              collected_at:        toDatetimeLocal(editingEvidence.collected_at),
+              evidence_source:     editingEvidence.evidence_source     || 'Complainant',
+              collection_location: editingEvidence.collection_location || '',
+              evidence_status:     editingEvidence.evidence_status     || 'Collected',
+              case_number:         editingEvidence.case_number         || '',
+              incident_number:     editingEvidence.incident_number     || '',
+              dispatch_number:     editingEvidence.dispatch_number     || '',
             }}
             onSave={handleUpdate}
             onCancel={() => setEditingEvidence(null)}
@@ -526,32 +647,61 @@ const EvidenceManagement = ({ role = 'encoder' }) => {
     setIncidentsError(null)
 
     try {
-      // First, get all incidents with their dispatch status
+      // Get incidents with PNP routing OR evidence_enabled flag
       const { data: incidentsData, error: incidentsError } = await supabase
         .from('incidents')
         .select(`
           id, 
-          incident_number, 
+          incident_number,
           incident_type, 
           incident_date, 
           location, 
-          status
+          status,
+          routing_decision,
+          evidence_enabled
         `)
         .order('created_at', { ascending: false })
 
       if (incidentsError) throw incidentsError
 
-      // Get all dispatches with Completed status
-      const { data: completedDispatches, error: dispatchError } = await supabase
+      // Filter to incidents that are PNP-referred OR manually enabled
+      let eligibleIncidents = (incidentsData || []).filter(inc => 
+        inc.routing_decision === 'pnp_referral' || inc.evidence_enabled === true
+      )
+
+      // Get case_number for each incident by joining with case_documentations
+      const enrichedIncidents = await Promise.all(
+        eligibleIncidents.map(async (inc) => {
+          // Get case documentation for this incident
+          const { data: caseDoc } = await supabase
+            .from('case_documentations')
+            .select('case_number')
+            .eq('incident_id', inc.id)
+            .maybeSingle()
+
+          return {
+            ...inc,
+            case_number: caseDoc?.case_number || null
+          }
+        })
+      )
+
+      // Get dispatch records for eligible incidents
+      const eligibleIds = enrichedIncidents.map(inc => inc.id)
+      
+      const { data: dispatchData, error: dispatchError } = await supabase
         .from('dispatch')
-        .select('incident_id, dispatch_status')
-        .eq('dispatch_status', 'Completed')
+        .select('incident_id, dispatch_number, dispatch_status')
+        .in('incident_id', eligibleIds)
 
       if (dispatchError) throw dispatchError
 
-      // Create a Set of incident IDs that have completed dispatches
-      const completedDispatchIncidentIds = new Set(
-        completedDispatches?.map(d => d.incident_id) || []
+      // Create map of incident_id -> dispatch info
+      const dispatchMap = new Map(
+        (dispatchData || []).map(d => [d.incident_id, { 
+          dispatch_number: d.dispatch_number,
+          dispatch_status: d.dispatch_status 
+        }])
       )
 
       // Get all incidents that already have evidence records
@@ -566,10 +716,17 @@ const EvidenceManagement = ({ role = 'encoder' }) => {
         existingEvidence?.map(e => e.incident_id) || []
       )
 
-      // Filter incidents to only include those with completed dispatches AND no existing evidence
-      let filteredIncidents = (incidentsData || []).filter(inc => 
-        completedDispatchIncidentIds.has(inc.id) && !incidentsWithEvidence.has(inc.id)
+      // Filter: incidents without existing evidence
+      let filteredIncidents = enrichedIncidents.filter(inc => 
+        !incidentsWithEvidence.has(inc.id)
       )
+
+      // Attach dispatch info if available
+      filteredIncidents = filteredIncidents.map(inc => ({
+        ...inc,
+        dispatch_number: dispatchMap.get(inc.id)?.dispatch_number || null,
+        dispatch_status: dispatchMap.get(inc.id)?.dispatch_status || 'Not Dispatched'
+      }))
 
       // Apply status filter if not "All"
       if (statusFilter !== 'All') {
@@ -581,6 +738,7 @@ const EvidenceManagement = ({ role = 'encoder' }) => {
         const term = search.trim().toLowerCase()
         filteredIncidents = filteredIncidents.filter(inc =>
           inc.incident_number?.toLowerCase().includes(term) ||
+          inc.case_number?.toLowerCase().includes(term) ||
           inc.incident_type?.toLowerCase().includes(term) ||
           inc.location?.toLowerCase().includes(term)
         )
@@ -667,8 +825,11 @@ const EvidenceManagement = ({ role = 'encoder' }) => {
                     isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-background'
                   }`}>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <p className="font-mono text-xs font-semibold text-primary truncate">{inc.incident_number}</p>
+                      {inc.case_number && (
+                        <p className="font-mono text-xs text-muted">Case: {inc.case_number}</p>
+                      )}
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700 flex-shrink-0">
                         Ready for Evidence
                       </span>

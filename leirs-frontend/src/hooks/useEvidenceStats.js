@@ -35,8 +35,8 @@ const useEvidenceStats = () => {
       const byType = {};
       
       evidenceData?.forEach(item => {
-        // Count by status
-        const status = item.status || 'Logged';
+        // Count by evidence_status (new field)
+        const status = item.evidence_status || 'Collected';
         byStatus[status] = (byStatus[status] || 0) + 1;
         
         // Count by type

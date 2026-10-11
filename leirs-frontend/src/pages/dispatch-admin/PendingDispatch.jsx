@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, RefreshCw, MapPin, Calendar, Tag } from 'lucide-react';
+import { AlertCircle, RefreshCw, MapPin, Calendar, Tag, Send } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 function PendingDispatch() {
@@ -85,7 +85,8 @@ function PendingDispatch() {
   };
 
   const handleDispatch = (caseItem) => {
-    navigate(`/dispatch-admin/dispatch/${caseItem.incident_id}`);
+    // Route to unified dispatch form
+    navigate(`/dispatch-admin/response/${caseItem.incident_id}`);
   };
 
   const formatDate = (dateStr) => {
@@ -123,8 +124,8 @@ function PendingDispatch() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-text mb-1">Pending Dispatch Requests</h1>
-          <p className="text-muted">Cases ready for police station selection and dispatch</p>
+          <h1 className="text-2xl font-heading font-bold text-text mb-1">Pending Response Requests</h1>
+          <p className="text-muted">Cases ready for Barangay Tanod or PNP response dispatch</p>
         </div>
         <button
           onClick={fetchPendingCases}
@@ -238,8 +239,8 @@ function PendingDispatch() {
                         onClick={() => handleDispatch(item)}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
                       >
-                        <MapPin size={16} />
-                        Dispatch
+                        <Send size={16} />
+                        Create Response
                       </button>
                     </td>
                   </tr>
@@ -256,11 +257,11 @@ function PendingDispatch() {
           <div className="flex items-start gap-3">
             <AlertCircle size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <p className="font-semibold mb-1">Dispatch Workflow</p>
+              <p className="font-semibold mb-1">Response Dispatch Workflow</p>
               <p>
-                Click <strong>Dispatch</strong> to view the incident on a map, select a nearby police station, 
-                and create a dispatch request. You'll manage the station's response in Active Dispatches. 
-                If a station declines, the case will return here so you can select a different station.
+                Click <strong>Create Response</strong> to select response type (Barangay Tanod or PNP Officer), 
+                view the incident details, and create a response dispatch request. You'll manage the response in Active Responses. 
+                If a PNP station declines, the case will return here so you can select a different station or response type.
               </p>
             </div>
           </div>

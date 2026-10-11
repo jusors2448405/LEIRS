@@ -23,11 +23,11 @@ const CaseAdminDashboard = () => {
     setLoading(true)
     
     try {
-      // Fetch forwarded incidents (status = Under Investigation, no case doc yet)
+      // Fetch forwarded incidents (status = REVIEWED, no case doc yet)
       const { data: incidents, error: incErr } = await supabase
         .from('incidents')
         .select('id, incident_number, incident_type, incident_date, status, priority, complainant_name')
-        .eq('status', 'Under Investigation')
+        .eq('status', 'REVIEWED')
         .order('updated_at', { ascending: false })
 
       if (incErr) throw incErr

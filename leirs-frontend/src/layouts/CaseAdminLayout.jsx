@@ -8,7 +8,8 @@ const CaseAdminLayout = ({ user, onLogout }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   React.useEffect(() => {
-    if (!user || user.role !== 'case_admin') {
+    // Allow system_admin (full access) OR case_admin (module-specific access)
+    if (!user || (user.role !== 'case_admin' && user.role !== 'system_admin')) {
       navigate('/')
     }
   }, [user, navigate])
@@ -18,7 +19,7 @@ const CaseAdminLayout = ({ user, onLogout }) => {
   return (
     <div className="min-h-screen">
       <Sidebar
-        role="case_admin"
+        role={user.role} // Pass actual user role to show correct menu
         onLogout={onLogout}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

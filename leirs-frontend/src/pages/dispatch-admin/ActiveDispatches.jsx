@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Search, Filter, Eye, User, MapPin, Clock, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, Filter, Eye, User, MapPin, Clock, AlertCircle, CheckCircle, Shield, Radio } from 'lucide-react';
 import useDispatchRequest from '../../hooks/useDispatchRequest';
 
 function ActiveDispatches() {
@@ -13,11 +13,14 @@ function ActiveDispatches() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedDispatch, setSelectedDispatch] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showActionModal, setShowActionModal] = useState(false);
   const [officerName, setOfficerName] = useState('');
   const [officerBadge, setOfficerBadge] = useState('');
+  const [actionTaken, setActionTaken] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [responseTypeFilter, setResponseTypeFilter] = useState('all');
 
-  const { updateStationResponse, assignOfficer, updateDispatchStatus } = useDispatchRequest();
+  const { updateStationResponse, assignOfficer, updateDispatchStatus, updateActionTaken } = useDispatchRequest();
 
   useEffect(() => {
     fetchActiveDispatches();
@@ -40,7 +43,7 @@ function ActiveDispatches() {
 
   useEffect(() => {
     filterDispatches();
-  }, [searchTerm, statusFilter, dispatches]);
+  }, [searchTerm, statusFilter, responseTypeFilter, dispatches]);
 
   const fetchActiveDispatches = async () => {
     try {
@@ -80,6 +83,15 @@ function ActiveDispatches() {
   const filterDispatches = () => {
     let filtered = [...dispatches];
 
+    // Response Type filter
+    if (responseTypeFilter !== 'all') {
+      if (responseTypeFilter === 'barangay_tanod') {
+        filtered = filtered.filter(d => d.response_type === 'barangay_tanod');
+      } else if (responseTypeFilter === 'pnp_officer') {
+        filtered = filtered.filter(d => !d.response_type || d.response_type === 'pnp_officer');
+      }
+    }
+
     // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(d => d.dispatch_status === statusFilter);
@@ -92,7 +104,9 @@ function ActiveDispatches() {
         d.incident?.incident_number?.toLowerCase().includes(term) ||
         d.incident?.incident_type?.toLowerCase().includes(term) ||
         d.police_station?.station_name?.toLowerCase().includes(term) ||
-        d.assigned_officer_name?.toLowerCase().includes(term)
+        d.assigned_officer_name?.toLowerCase().includes(term) ||
+        d.responder_name?.toLowerCase().includes(term) ||
+        d.response_purpose?.toLowerCase().includes(term)
       );
     }
 
@@ -162,6 +176,41 @@ function ActiveDispatches() {
     }
   };
 
+  const handleTanodStatusUpdate = async (dispatchId, newStatus) => {
+    if (!confirm(`Update status to "${newStatus}"?`)) return;
+
+    setActionLoading(true);
+    const result = await updateDispatchStatus(dispatchId, newStatus);
+    setActionLoading(false);
+
+    if (!result.error) {
+      fetchActiveDispatches();
+    }
+  };
+
+  const handleRecordActionTaken = async () => {
+    if (!selectedDispatch || !actionTaken.trim()) {
+      alert('Please describe the action taken');
+      return;
+    }
+
+    setActionLoading(true);
+    const result = await updateActionTaken(
+      selectedDispatch.id,
+      actionTaken.trim(),
+      new Date().toISOString()
+    );
+    setActionLoading(false);
+
+    if (!result.error) {
+      setShowActionModal(false);
+      setActionTaken('');
+      setSelectedDispatch(null);
+      fetchActiveDispatches();
+      alert('Action recorded successfully!');
+    }
+  };
+
   const getStatusColor = (status) => {
     const colors = {
       'Pending Station Response': 'bg-yellow-100 text-yellow-700 border-yellow-200',
@@ -218,6 +267,40 @@ function ActiveDispatches() {
         <p className="text-muted">Monitor and manage ongoing dispatch requests</p>
       </div>
 
+      {/* Response Type Filter Tabs */}
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => setResponseTypeFilter('all')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            responseTypeFilter === 'all'
+              ? 'bg-primary text-white'
+              : 'bg-white border border-border text-muted hover:bg-background'
+          }`}
+        >
+          All Responses
+        </button>
+        <button
+          onClick={() => setResponseTypeFilter('barangay_tanod')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            responseTypeFilter === 'barangay_tanod'
+              ? 'bg-green-600 text-white'
+              : 'bg-white border border-border text-muted hover:bg-background'
+          }`}
+        >
+          🛡️ Barangay Tanod
+        </button>
+        <button
+          onClick={() => setResponseTypeFilter('pnp_officer')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            responseTypeFilter === 'pnp_officer'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white border border-border text-muted hover:bg-background'
+          }`}
+        >
+          👮 PNP Officer
+        </button>
+      </div>
+
       {/* Filters */}
       <div className="bg-white border border-border rounded-xl p-4 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -255,22 +338,22 @@ function ActiveDispatches() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-sm text-yellow-700 mb-1">Pending Response</p>
-          <p className="text-2xl font-bold text-yellow-900">
-            {dispatches.filter(d => d.dispatch_status === 'Pending Station Response').length}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <p className="text-sm text-green-700 mb-1">🛡️ Barangay Tanod</p>
+          <p className="text-2xl font-bold text-green-900">
+            {dispatches.filter(d => d.response_type === 'barangay_tanod').length}
           </p>
         </div>
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-700 mb-1">Officer Assigned</p>
+          <p className="text-sm text-blue-700 mb-1">👮 PNP Officer</p>
           <p className="text-2xl font-bold text-blue-900">
-            {dispatches.filter(d => d.dispatch_status === 'Officer Assigned' || d.dispatch_status === 'Dispatched').length}
+            {dispatches.filter(d => !d.response_type || d.response_type === 'pnp_officer').length}
           </p>
         </div>
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <p className="text-sm text-orange-700 mb-1">En Route</p>
+          <p className="text-sm text-orange-700 mb-1">En Route / Dispatched</p>
           <p className="text-2xl font-bold text-orange-900">
-            {dispatches.filter(d => d.dispatch_status === 'Responding').length}
+            {dispatches.filter(d => d.dispatch_status === 'Dispatched' || d.dispatch_status === 'Responding').length}
           </p>
         </div>
         <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
@@ -291,14 +374,28 @@ function ActiveDispatches() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredDispatches.map((dispatch) => (
+          {filteredDispatches.map((dispatch) => {
+            const isTanod = dispatch.response_type === 'barangay_tanod';
+            const isPNP = !dispatch.response_type || dispatch.response_type === 'pnp_officer';
+
+            return (
             <div key={dispatch.id} className="bg-white border border-border rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <h3 className="font-heading font-semibold text-text">
                       {dispatch.incident?.incident_number || 'N/A'}
                     </h3>
+                    
+                    {/* Response Type Badge */}
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      isTanod 
+                        ? 'bg-green-100 text-green-700 border border-green-300'
+                        : 'bg-blue-100 text-blue-700 border border-blue-300'
+                    }`}>
+                      {isTanod ? '🛡️ Barangay Tanod' : '👮 PNP Officer'}
+                    </span>
+
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(dispatch.dispatch_status)}`}>
                       {dispatch.dispatch_status}
                     </span>
@@ -311,6 +408,9 @@ function ActiveDispatches() {
                     </span>
                   </div>
                   <p className="text-sm text-muted">{dispatch.incident?.incident_type || 'N/A'}</p>
+                  {dispatch.response_purpose && (
+                    <p className="text-xs text-primary mt-1">Purpose: {dispatch.response_purpose}</p>
+                  )}
                 </div>
               </div>
 
@@ -318,18 +418,34 @@ function ActiveDispatches() {
                 <div className="flex items-start gap-2">
                   <MapPin size={16} className="text-muted mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-muted">Location</p>
+                    <p className="text-xs text-muted">Incident Location</p>
                     <p className="text-sm text-text">{dispatch.incident?.location || 'N/A'}</p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2">
-                  <MapPin size={16} className="text-primary mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted">Police Station</p>
-                    <p className="text-sm font-semibold text-text">{dispatch.police_station?.station_name || 'N/A'}</p>
+                {/* CONDITIONAL: PNP shows Police Station, Tanod shows Responder */}
+                {isPNP && (
+                  <div className="flex items-start gap-2">
+                    <MapPin size={16} className="text-primary mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted">Police Station</p>
+                      <p className="text-sm font-semibold text-text">{dispatch.police_station?.station_name || 'N/A'}</p>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {isTanod && (
+                  <div className="flex items-start gap-2">
+                    <User size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted">Assigned Responder</p>
+                      <p className="text-sm font-semibold text-text">{dispatch.responder_name || 'Pending Assignment'}</p>
+                      {dispatch.responder_role && (
+                        <p className="text-xs text-muted">{dispatch.responder_role}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-start gap-2">
                   <Clock size={16} className="text-muted mt-0.5 flex-shrink-0" />
@@ -340,7 +456,8 @@ function ActiveDispatches() {
                 </div>
               </div>
 
-              {dispatch.assigned_officer_name && (
+              {/* PNP Officer Info */}
+              {isPNP && dispatch.assigned_officer_name && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                   <div className="flex items-center gap-2">
                     <User size={16} className="text-blue-600" />
@@ -355,70 +472,151 @@ function ActiveDispatches() {
                 </div>
               )}
 
-              {/* Action Buttons */}
+              {/* Tanod Action Taken Info */}
+              {isTanod && dispatch.action_taken && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs text-green-700">Action Taken</p>
+                      <p className="text-sm text-green-900">{dispatch.action_taken}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons - Conditional by Response Type */}
               <div className="flex flex-wrap gap-2">
-                {dispatch.dispatch_status === 'Pending Station Response' && (
+                {/* PNP WORKFLOW BUTTONS */}
+                {isPNP && (
                   <>
-                    <button
-                      onClick={() => handleStationResponse(dispatch.id, 'accepted')}
-                      disabled={actionLoading}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
-                    >
-                      <CheckCircle size={16} />
-                      Mark as Station Accepted
-                    </button>
-                    <button
-                      onClick={() => handleStationResponse(dispatch.id, 'declined')}
-                      disabled={actionLoading}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium disabled:opacity-50"
-                    >
-                      Mark as Station Declined
-                    </button>
+                    {dispatch.dispatch_status === 'Pending Station Response' && (
+                      <>
+                        <button
+                          onClick={() => handleStationResponse(dispatch.id, 'accepted')}
+                          disabled={actionLoading}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                        >
+                          <CheckCircle size={16} />
+                          Mark as Station Accepted
+                        </button>
+                        <button
+                          onClick={() => handleStationResponse(dispatch.id, 'declined')}
+                          disabled={actionLoading}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium disabled:opacity-50"
+                        >
+                          Mark as Station Declined
+                        </button>
+                      </>
+                    )}
+
+                    {dispatch.dispatch_status === 'Station Declined' && (
+                      <button
+                        onClick={() => handleSelectAnotherStation(dispatch)}
+                        disabled={actionLoading}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <MapPin size={16} />
+                        Select Another Station
+                      </button>
+                    )}
+
+                    {dispatch.dispatch_status === 'Station Accepted' && !dispatch.assigned_officer_name && (
+                      <button
+                        onClick={() => {
+                          setSelectedDispatch(dispatch);
+                          setShowModal(true);
+                        }}
+                        disabled={actionLoading}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <User size={16} />
+                        Assign Officer
+                      </button>
+                    )}
+
+                    {getNextStatuses(dispatch.dispatch_status).map((nextStatus) => (
+                      <button
+                        key={nextStatus}
+                        onClick={() => handleStatusUpdate(dispatch.id, nextStatus)}
+                        disabled={actionLoading}
+                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50"
+                      >
+                        Mark as {nextStatus}
+                      </button>
+                    ))}
                   </>
                 )}
 
-                {dispatch.dispatch_status === 'Station Declined' && (
-                  <button
-                    onClick={() => handleSelectAnotherStation(dispatch)}
-                    disabled={actionLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
-                  >
-                    <MapPin size={16} />
-                    Select Another Station
-                  </button>
-                )}
+                {/* BARANGAY TANOD WORKFLOW BUTTONS */}
+                {isTanod && (
+                  <>
+                    {dispatch.dispatch_status === 'Pending' && (
+                      <button
+                        onClick={() => handleTanodStatusUpdate(dispatch.id, 'Assigned')}
+                        disabled={actionLoading}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <User size={16} />
+                        Mark as Assigned
+                      </button>
+                    )}
 
-                {dispatch.dispatch_status === 'Station Accepted' && !dispatch.assigned_officer_name && (
-                  <button
-                    onClick={() => {
-                      setSelectedDispatch(dispatch);
-                      setShowModal(true);
-                    }}
-                    disabled={actionLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
-                  >
-                    <User size={16} />
-                    Assign Officer
-                  </button>
-                )}
+                    {dispatch.dispatch_status === 'Assigned' && (
+                      <button
+                        onClick={() => handleTanodStatusUpdate(dispatch.id, 'Dispatched')}
+                        disabled={actionLoading}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50"
+                      >
+                        Mark as Dispatched
+                      </button>
+                    )}
 
-                {getNextStatuses(dispatch.dispatch_status).map((nextStatus) => (
-                  <button
-                    key={nextStatus}
-                    onClick={() => handleStatusUpdate(dispatch.id, nextStatus)}
-                    disabled={actionLoading}
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50"
-                  >
-                    Mark as {nextStatus}
-                  </button>
-                ))}
+                    {dispatch.dispatch_status === 'Dispatched' && (
+                      <button
+                        onClick={() => handleTanodStatusUpdate(dispatch.id, 'On Scene')}
+                        disabled={actionLoading}
+                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <MapPin size={16} />
+                        Mark as On Scene
+                      </button>
+                    )}
+
+                    {dispatch.dispatch_status === 'On Scene' && (
+                      <button
+                        onClick={() => {
+                          setSelectedDispatch(dispatch);
+                          setShowActionModal(true);
+                        }}
+                        disabled={actionLoading}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <CheckCircle size={16} />
+                        Record Action Taken
+                      </button>
+                    )}
+
+                    {dispatch.dispatch_status === 'Action Taken' && (
+                      <button
+                        onClick={() => handleTanodStatusUpdate(dispatch.id, 'Completed')}
+                        disabled={actionLoading}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <CheckCircle size={16} />
+                        Mark as Completed
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* Assign Officer Modal */}
+      {/* Assign Officer Modal (PNP) */}
       {showModal && selectedDispatch && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full">
@@ -471,6 +669,62 @@ function ActiveDispatches() {
                   setSelectedDispatch(null);
                   setOfficerName('');
                   setOfficerBadge('');
+                }}
+                disabled={actionLoading}
+                className="px-4 py-2.5 border border-border rounded-lg hover:bg-background transition-colors font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Record Action Taken Modal (Barangay Tanod) */}
+      {showActionModal && selectedDispatch && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-text mb-4">Record Action Taken</h3>
+            
+            <div className="space-y-4 mb-6">
+              <div>
+                <p className="text-sm text-muted mb-1">Incident Number</p>
+                <p className="font-mono font-semibold text-text">{selectedDispatch.incident?.incident_number}</p>
+              </div>
+
+              <div>
+                <p className="text-sm text-muted mb-1">Responder</p>
+                <p className="font-semibold text-text">{selectedDispatch.responder_name}</p>
+                <p className="text-xs text-muted">{selectedDispatch.responder_role}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">
+                  Describe Action Taken <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={actionTaken}
+                  onChange={(e) => setActionTaken(e.target.value)}
+                  placeholder="Describe what action was taken to address the incident..."
+                  rows={4}
+                  className="w-full px-4 py-2.5 border border-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleRecordActionTaken}
+                disabled={actionLoading || !actionTaken.trim()}
+                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+              >
+                {actionLoading ? 'Recording...' : 'Record Action'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowActionModal(false);
+                  setSelectedDispatch(null);
+                  setActionTaken('');
                 }}
                 disabled={actionLoading}
                 className="px-4 py-2.5 border border-border rounded-lg hover:bg-background transition-colors font-medium disabled:opacity-50"

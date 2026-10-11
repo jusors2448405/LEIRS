@@ -1,0 +1,70 @@
+═══════════════════════════════════════════════════════════════════════════════
+  LEIRS EMAIL NOTIFICATION - QUICK START COMMANDS
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Backend
+────────────────────────────────────────────────────────────────────────────────
+cd leirs-backend
+
+
+STEP 2: Login to Supabase (if not already logged in)
+────────────────────────────────────────────────────────────────────────────────
+supabase login
+
+
+STEP 3: Link Your Project (get PROJECT_REF from Supabase Dashboard)
+────────────────────────────────────────────────────────────────────────────────
+supabase link --project-ref YOUR_PROJECT_REF_HERE
+
+
+STEP 4: Set Secrets
+────────────────────────────────────────────────────────────────────────────────
+# Get Resend API key from: https://resend.com/api-keys
+
+supabase secrets set RESEND_API_KEY=re_your_actual_resend_api_key_here
+supabase secrets set FROM_EMAIL="LEIRS System <onboarding@resend.dev>"
+
+
+STEP 5: Deploy the Function
+────────────────────────────────────────────────────────────────────────────────
+supabase functions deploy send-email --no-verify-jwt
+
+
+STEP 6: Update Frontend .env
+────────────────────────────────────────────────────────────────────────────────
+# Copy the Function URL from the deployment output
+# Add this line to: leirs-frontend/.env
+
+VITE_EMAIL_API_URL=https://YOUR_PROJECT_REF.supabase.co/functions/v1/send-email
+
+
+STEP 7: Test the Function
+────────────────────────────────────────────────────────────────────────────────
+$body = @{
+    to = "your-email@example.com"
+    subject = "LEIRS Test Email"
+    body = "If you receive this, email notifications are working!"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Uri "https://YOUR_PROJECT_REF.supabase.co/functions/v1/send-email" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body $body
+
+
+STEP 8: Restart Frontend Dev Server
+────────────────────────────────────────────────────────────────────────────────
+cd ..\leirs-frontend
+npm run dev
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  ✅ DONE! Email notifications are now active.
+═══════════════════════════════════════════════════════════════════════════════
+
+View logs:           supabase functions logs send-email --follow
+List secrets:        supabase secrets list
+Check deployment:    supabase functions list
+
+Full docs: leirs-backend/supabase/DEPLOY_EMAIL_FUNCTION.md

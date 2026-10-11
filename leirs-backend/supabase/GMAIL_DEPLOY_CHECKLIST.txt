@@ -1,0 +1,212 @@
+═══════════════════════════════════════════════════════════════════════════════
+  LEIRS - GMAIL SMTP DEPLOYMENT CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 PREREQUISITES
+────────────────────────────────────────────────────────────────────────────────
+[ ] Gmail account for LEIRS notifications (e.g., leirs.notifications@gmail.com)
+[ ] Supabase CLI installed and logged in
+[ ] Project linked: kyvhyhmqwcxbloiliojw
+
+
+🔐 STEP 1: ENABLE 2-STEP VERIFICATION
+────────────────────────────────────────────────────────────────────────────────
+1. Go to: https://myaccount.google.com/security
+2. Click "2-Step Verification"
+3. Follow setup wizard
+4. Verify setup complete
+
+[ ] 2-Step Verification enabled
+
+
+🔑 STEP 2: GENERATE APP PASSWORD
+────────────────────────────────────────────────────────────────────────────────
+1. Go to: https://myaccount.google.com/apppasswords
+2. Sign in if prompted
+3. Select app: Mail
+4. Select device: Other (Custom name)
+5. Enter name: LEIRS Supabase Function
+6. Click Generate
+7. COPY THE 16-CHARACTER PASSWORD
+8. REMOVE ALL SPACES (abcd efgh ijkl mnop → abcdefghijklmnop)
+
+[ ] App password generated
+[ ] Spaces removed from password
+[ ] Password copied securely
+
+
+💾 STEP 3: SET SUPABASE SECRETS
+────────────────────────────────────────────────────────────────────────────────
+cd leirs-backend
+
+supabase secrets set GMAIL_USER=leirs.notifications@gmail.com
+supabase secrets set GMAIL_APP_PASSWORD=abcdefghijklmnop
+
+# Verify secrets set
+supabase secrets list
+
+[ ] GMAIL_USER secret set
+[ ] GMAIL_APP_PASSWORD secret set
+[ ] Secrets verified with 'secrets list'
+
+
+🚀 STEP 4: DEPLOY EDGE FUNCTION
+────────────────────────────────────────────────────────────────────────────────
+supabase functions deploy send-email --no-verify-jwt
+
+Expected output:
+  Deploying Function send-email...
+  ✓ Function deployed successfully
+  Function URL: https://kyvhyhmqwcxbloiliojw.supabase.co/functions/v1/send-email
+
+[ ] Function deployed successfully
+[ ] Function URL displayed
+[ ] No errors during deployment
+
+
+🧪 STEP 5: TEST EMAIL DELIVERY
+────────────────────────────────────────────────────────────────────────────────
+$testBody = @{
+    to = "your-test-email@example.com"
+    subject = "LEIRS Gmail SMTP Test"
+    body = "If you receive this, Gmail SMTP is working!"
+} | ConvertTo-Json
+
+$functionUrl = "https://kyvhyhmqwcxbloiliojw.supabase.co/functions/v1/send-email"
+
+Invoke-RestMethod `
+  -Uri $functionUrl `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body $testBody
+
+Expected response:
+  {
+    "success": true,
+    "message": "Email sent successfully via Gmail SMTP"
+  }
+
+[ ] Test command executed
+[ ] Response shows success: true
+[ ] Email received in test inbox (check spam folder)
+[ ] Sender shows: leirs.notifications@gmail.com
+
+
+📊 STEP 6: VERIFY GMAIL SENT FOLDER
+────────────────────────────────────────────────────────────────────────────────
+1. Login to Gmail: https://mail.google.com/
+2. Go to "Sent" folder
+3. Find test email
+
+[ ] Test email appears in Sent folder
+[ ] Email delivered successfully
+
+
+🔍 STEP 7: CHECK FUNCTION LOGS
+────────────────────────────────────────────────────────────────────────────────
+supabase functions logs send-email --follow
+
+Expected log output:
+  Sending email via Gmail SMTP: {to: "...", subject: "..."}
+  Email sent successfully via Gmail SMTP
+
+[ ] Function logs show success
+[ ] No errors in logs
+
+
+🌐 STEP 8: TEST FROM FRONTEND
+────────────────────────────────────────────────────────────────────────────────
+1. Go to: http://localhost:5173/staff/login
+2. Login with incident admin credentials
+3. Navigate to: /incident-admin/new-incident
+4. Fill form with test email address
+5. Submit incident
+6. Check browser console
+
+Expected console output:
+  ✅ Email condition passed
+  📧 About to call sendIncidentSubmitted()
+  [useComplainantEmail] Email sent successfully
+  ✅ Email sent successfully!
+
+Expected UI:
+  ✅ Green banner: "Confirmation email sent successfully!"
+
+[ ] Form submitted successfully
+[ ] Console shows email success
+[ ] Green banner appears
+[ ] Email received by test user
+
+
+🧹 STEP 9: CLEANUP OLD SECRETS (Optional)
+────────────────────────────────────────────────────────────────────────────────
+# Remove old Resend secrets (no longer needed)
+supabase secrets unset RESEND_API_KEY
+supabase secrets unset FROM_EMAIL
+
+[ ] Old secrets removed (optional)
+
+
+✅ FINAL VERIFICATION
+────────────────────────────────────────────────────────────────────────────────
+[ ] Gmail 2FA enabled
+[ ] App password generated
+[ ] Supabase secrets set
+[ ] Edge Function deployed
+[ ] Test email sent successfully
+[ ] Test email received
+[ ] Gmail Sent folder shows email
+[ ] Function logs clean
+[ ] Frontend form works
+[ ] Complainant receives email
+[ ] No errors in console
+[ ] No errors in function logs
+
+
+🚨 TROUBLESHOOTING
+────────────────────────────────────────────────────────────────────────────────
+
+Issue: "Username and Password not accepted"
+Fix:  1. Check 2FA enabled
+      2. Generate NEW app password
+      3. Remove ALL spaces from password
+      4. Use full Gmail address
+
+Issue: "Gmail credentials not configured"
+Fix:  supabase secrets list
+      supabase secrets set GMAIL_USER=...
+      supabase secrets set GMAIL_APP_PASSWORD=...
+
+Issue: Email not received
+Fix:  1. Check spam folder
+      2. Check Gmail Sent folder
+      3. View function logs
+      4. Verify recipient email
+
+Issue: "Connection timeout"
+Fix:  1. Check network connection
+      2. Verify port 465 not blocked
+      3. Try again in a few minutes
+
+
+📊 GMAIL LIMITS (Free Account)
+────────────────────────────────────────────────────────────────────────────────
+Daily Limit:  500 emails per day
+Rate Limit:   ~20 emails per minute
+Reset Time:   Midnight Pacific Time
+
+For production: Consider Google Workspace (2,000 emails/day)
+
+
+📝 NOTES
+────────────────────────────────────────────────────────────────────────────────
+- Use DEDICATED Gmail account (not personal)
+- App password is 16 characters WITHOUT spaces
+- Frontend code requires NO changes
+- Emails appear in Gmail Sent folder
+- Monitor function logs for issues
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  Documentation: leirs-backend/supabase/GMAIL_SMTP_SETUP.md
+═══════════════════════════════════════════════════════════════════════════════

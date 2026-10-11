@@ -58,6 +58,12 @@ const useDispatch = ({ incidentId = null, officerName = null, fetchAll = false }
         created_at,
         updated_at,
         incident_id,
+        response_type,
+        responder_name,
+        responder_role,
+        response_purpose,
+        tanod_arrival_time,
+        action_taken,
         incidents (
           id,
           incident_number,

@@ -70,7 +70,9 @@ const useEvidence = (incidentId) => {
   /**
    * @param {{
    *   evidence_type, evidence_name, description?,
-   *   file_name?, file_url?, collected_by?, collected_at?, status?
+   *   file_name?, file_url?, collected_by?, collected_at?, evidence_status?,
+   *   evidence_source?, collection_location?, case_number?, 
+   *   incident_number?, dispatch_number?
    * }} fields
    * @returns {{ error: string|null }}
    */
@@ -88,22 +90,107 @@ const useEvidence = (incidentId) => {
       const { data, error: insertError } = await supabase
         .from('evidence')
         .insert([{
-          incident_id:     incidentId,
-          evidence_number: evidenceNumber,
-          evidence_type:   fields.evidence_type,
-          evidence_name:   fields.evidence_name,
-          description:     fields.description     || null,
-          file_name:       fields.file_name        || null,
-          file_url:        fields.file_url         || null,
-          collected_by:    fields.collected_by     || null,
-          collected_at:    fields.collected_at     || null,
-          status:          fields.status           || 'Logged',
+          incident_id:        incidentId,
+          evidence_number:    evidenceNumber,
+          evidence_type:      fields.evidence_type,
+          evidence_name:      fields.evidence_name,
+          description:        fields.description           || null,
+          file_name:          fields.file_name             || null,
+          file_url:           fields.file_url              || null,
+          collected_by:       fields.collected_by          || null,
+          collected_at:       fields.collected_at          || null,
+          evidence_status:    fields.evidence_status       || 'Collected',
+          evidence_source:    fields.evidence_source       || null,
+          collection_location: fields.collection_location  || null,
+          case_number:        fields.case_number           || null,
+          incident_number:    fields.incident_number       || null,
+          dispatch_number:    fields.dispatch_number       || null,
         }])
         .select('*')
         .single()
 
       if (!insertError) {
         setEvidence((prev) => [data, ...prev])
+
+        // Send email notification to complainant (non-blocking)
+        try {
+          const { data: incident, error: incidentError } = await supabase
+            .from('incidents')
+            .select('complainant_email, incident_number, incident_type, complainant_name')
+            .eq('id', incidentId)
+            .single();
+
+          if (incidentError) {
+            console.warn('[useEvidence] Failed to fetch incident for email:', incidentError);
+          } else if (incident?.complainant_email) {
+            console.log('[useEvidence] Sending evidence update email to:', incident.complainant_email);
+
+            const emailApiUrl = import.meta.env.VITE_EMAIL_API_URL;
+            if (!emailApiUrl) {
+              console.warn('[useEvidence] Email API URL not configured. Email skipped.');
+            } else {
+              const subject = `LEIRS: Evidence Added - ${incident.incident_number}`;
+              const body = `
+Dear ${incident.complainant_name || 'Valued Citizen'},
+
+New evidence has been added to your incident report.
+
+Reference Number: ${incident.incident_number}
+Incident Type: ${incident.incident_type}
+
+Evidence Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Evidence Number: ${evidenceNumber}
+Evidence Type: ${fields.evidence_type}
+Evidence Name: ${fields.evidence_name}
+${fields.description ? `Description: ${fields.description}` : ''}
+Status: ${fields.evidence_status || 'Collected'}
+Collected By: ${fields.collected_by || 'N/A'}
+Added: ${new Date().toLocaleDateString('en-PH', { 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+})}
+
+This evidence has been documented and will be reviewed as part of your case.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Best regards,
+Barangay LEIRS Team
+Law Enforcement and Incident Reporting System
+              `.trim();
+
+              // Non-blocking fetch
+              fetch(emailApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  to: incident.complainant_email,
+                  subject: subject,
+                  body: body,
+                  html: body
+                })
+              }).then(response => {
+                if (response.ok) {
+                  console.log('[useEvidence] Evidence notification email sent successfully');
+                } else {
+                  console.warn('[useEvidence] Email API responded with error:', response.status);
+                }
+              }).catch(err => {
+                console.warn('[useEvidence] Failed to send evidence email:', err.message);
+              });
+            }
+          } else {
+            console.log('[useEvidence] No complainant email found for incident:', incidentId);
+          }
+        } catch (emailError) {
+          // Email failure should not block evidence creation
+          console.warn('[useEvidence] Email notification error (non-fatal):', emailError);
+        }
+
         setSaving(false)
         return { error: null }
       }
@@ -125,7 +212,9 @@ const useEvidence = (incidentId) => {
    * @param {string} id — uuid of the evidence row
    * @param {{
    *   evidence_type?, evidence_name?, description?,
-   *   file_name?, file_url?, collected_by?, collected_at?, status?
+   *   file_name?, file_url?, collected_by?, collected_at?, evidence_status?,
+   *   evidence_source?, collection_location?, case_number?, 
+   *   incident_number?, dispatch_number?
    * }} fields
    * @returns {{ error: string|null }}
    */
@@ -136,14 +225,19 @@ const useEvidence = (incidentId) => {
     const { data, error: updateError } = await supabase
       .from('evidence')
       .update({
-        evidence_type:  fields.evidence_type,
-        evidence_name:  fields.evidence_name,
-        description:    fields.description    ?? null,
-        file_name:      fields.file_name       ?? null,
-        file_url:       fields.file_url        ?? null,
-        collected_by:   fields.collected_by    ?? null,
-        collected_at:   fields.collected_at    ?? null,
-        status:         fields.status          ?? 'Logged',
+        evidence_type:       fields.evidence_type,
+        evidence_name:       fields.evidence_name,
+        description:         fields.description          ?? null,
+        file_name:           fields.file_name            ?? null,
+        file_url:            fields.file_url             ?? null,
+        collected_by:        fields.collected_by         ?? null,
+        collected_at:        fields.collected_at         ?? null,
+        evidence_status:     fields.evidence_status      ?? 'Collected',
+        evidence_source:     fields.evidence_source      ?? null,
+        collection_location: fields.collection_location  ?? null,
+        case_number:         fields.case_number          ?? null,
+        incident_number:     fields.incident_number      ?? null,
+        dispatch_number:     fields.dispatch_number      ?? null,
       })
       .eq('id', id)
       .select('*')

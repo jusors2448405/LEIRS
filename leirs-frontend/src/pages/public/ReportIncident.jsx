@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { Save, X, CheckCircle, Copy, Check, FileText } from 'lucide-react'
+import { Save, X, CheckCircle, Copy, Check, FileText, Mail } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import useComplainantEmail from '../../hooks/useComplainantEmail'
 
 // ── CopyButton: shows a tick for 2 seconds after copying ─────────────────────
 const CopyButton = ({ value }) => {
@@ -39,6 +40,7 @@ const ReportIncident = () => {
     location: '',
     reporterName: '',
     reporterContact: '',
+    reporterEmail: '', // New field for email notifications
     narrative: '',
     priority: 'Low',
   })
@@ -47,6 +49,12 @@ const ReportIncident = () => {
   const [submitError, setSubmitError] = useState('')
   const [successIncidentNumber, setSuccessIncidentNumber] = useState('')
   const [successReferencePin, setSuccessReferencePin] = useState('')
+  const [createdIncidentId, setCreatedIncidentId] = useState(null)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailError, setEmailError] = useState(null)
+
+  // Initialize email hook with created incident ID
+  const { sendIncidentSubmitted, sending: sendingEmail } = useComplainantEmail(createdIncidentId)
 
   const resetForm = () => {
     setFormData({
@@ -54,9 +62,13 @@ const ReportIncident = () => {
       location: '',
       reporterName: '',
       reporterContact: '',
+      reporterEmail: '',
       narrative: '',
       priority: 'Low',
     })
+    setCreatedIncidentId(null)
+    setEmailSent(false)
+    setEmailError(null)
   }
 
   const formatDateForIncidentNumber = (date) => {
@@ -95,14 +107,27 @@ const ReportIncident = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    console.log('=== FORM SUBMISSION STARTED ===')
+    console.log('Form data:', formData)
+    console.log('reporterEmail field:', formData.reporterEmail)
+    
     setSubmitError('')
     setSuccessIncidentNumber('')
+    setEmailSent(false)
+    setEmailError(null)
 
     const incidentType = formData.type.trim()
     const location = formData.location.trim()
     const complainantName = formData.reporterName.trim()
     const complainantContact = formData.reporterContact.trim()
+    const complainantEmail = formData.reporterEmail.trim()
     const description = formData.narrative.trim()
+    
+    console.log('=== EXTRACTED VALUES ===')
+    console.log('complainantEmail:', complainantEmail)
+    console.log('complainantName:', complainantName)
+    console.log('incidentType:', incidentType)
 
     if (!incidentType || !location || !complainantName || !complainantContact || !description) {
       setSubmitError('Please complete all required fields.')
@@ -119,27 +144,100 @@ const ReportIncident = () => {
       const incidentNumber = generateIncidentNumber()
       const referencePin = generateReferencePin()
 
-      const { error } = await supabase.from('incidents').insert([
-        {
-          incident_number: incidentNumber,
-          incident_type: incidentType,
-          incident_date: incidentDate,
-          incident_time: null,
-          location,
-          complainant_name: complainantName,
-          complainant_contact: complainantContact,
-          description,
-          priority: formData.priority,
-          status: 'Pending',
-          assigned_officer: null,
-          created_by: 'Public Portal',
-          reference_pin: referencePin,
-        },
-      ])
+      // Insert incident and retrieve the created record
+      const { data: createdIncident, error } = await supabase
+        .from('incidents')
+        .insert([
+          {
+            incident_number: incidentNumber,
+            incident_type: incidentType,
+            incident_date: incidentDate,
+            incident_time: null,
+            location,
+            complainant_name: complainantName,
+            complainant_contact: complainantContact,
+            complainant_email: complainantEmail || null, // Store email if provided
+            description,
+            priority: formData.priority,
+            status: 'Pending',
+            assigned_officer: null,
+            created_by: 'Public Portal',
+            reference_pin: referencePin,
+          },
+        ])
+        .select()
+        .single()
 
-      if (!error) {
+      if (!error && createdIncident) {
+        console.log('=== INCIDENT CREATED SUCCESSFULLY ===')
+        console.log('Created incident data:', createdIncident)
+        
+        // Success! Set state variables
         setSuccessIncidentNumber(incidentNumber)
         setSuccessReferencePin(referencePin)
+        setCreatedIncidentId(createdIncident.id)
+        
+        console.log('=== EMAIL NOTIFICATION CHECK ===')
+        console.log('complainantEmail value:', complainantEmail)
+        console.log('complainantEmail type:', typeof complainantEmail)
+        console.log('complainantEmail length:', complainantEmail?.length)
+        console.log('complainantEmail trimmed:', complainantEmail.trim())
+        console.log('Is email truthy?', !!complainantEmail)
+        
+        // Send email notification (non-blocking - email failure doesn't block incident creation)
+        if (complainantEmail) {
+          console.log('✅ Email condition passed - entering email block')
+          console.log('Attempting to send email to:', complainantEmail)
+          console.log('Using incident data:', {
+            id: createdIncident.id,
+            incident_number: createdIncident.incident_number,
+            incident_type: createdIncident.incident_type,
+            location: createdIncident.location,
+            complainant_name: createdIncident.complainant_name,
+            status: createdIncident.status
+          })
+          
+          try {
+            // Pass incident data directly to avoid refetch issue
+            const incidentDataForEmail = {
+              id: createdIncident.id,
+              incident_number: createdIncident.incident_number,
+              incident_type: createdIncident.incident_type,
+              location: createdIncident.location,
+              complainant_name: createdIncident.complainant_name,
+              status: createdIncident.status
+            }
+            
+            console.log('📧 About to call sendIncidentSubmitted()')
+            console.log('Email:', complainantEmail)
+            console.log('Incident data:', incidentDataForEmail)
+            
+            const result = await sendIncidentSubmitted(complainantEmail, incidentDataForEmail)
+            
+            console.log('📬 sendIncidentSubmitted() returned:', result)
+            console.log('Result type:', typeof result)
+            console.log('Result keys:', result ? Object.keys(result) : 'null')
+            
+            if (result?.error) {
+              console.error('❌ Email error returned:', result.error)
+              setEmailError('Note: Confirmation email could not be sent.')
+            } else {
+              console.log('✅ Email sent successfully!')
+              setEmailSent(true)
+            }
+          } catch (err) {
+            console.error('💥 Exception caught during email send:', err)
+            console.error('Error name:', err.name)
+            console.error('Error message:', err.message)
+            console.error('Error stack:', err.stack)
+            setEmailError('Note: Confirmation email could not be sent.')
+          }
+        } else {
+          console.log('❌ Email condition failed - no email provided')
+          console.log('Skipping email notification')
+        }
+        
+        console.log('=== CLEANING UP ===')
         resetForm()
         setIsSubmitting(false)
         return
@@ -182,6 +280,24 @@ const ReportIncident = () => {
             <p className="text-sm font-medium text-text">
               Save the details below — you will need them to track this report.
             </p>
+
+            {emailSent && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <Mail size={16} className="text-green-600 flex-shrink-0" />
+                <p className="text-sm text-green-700">
+                  Confirmation email sent successfully! Check your inbox.
+                </p>
+              </div>
+            )}
+
+            {emailError && (
+              <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <Mail size={16} className="text-yellow-600 flex-shrink-0" />
+                <p className="text-sm text-yellow-700">
+                  {emailError}
+                </p>
+              </div>
+            )}
 
             <div className="flex items-center justify-between gap-4 p-4 bg-background rounded-xl border border-border">
               <div className="flex items-center gap-3 min-w-0">
@@ -283,20 +399,21 @@ const ReportIncident = () => {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Location <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                className="input-field"
+                placeholder="Enter location of incident"
+                required
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">
-                  Location <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="input-field"
-                  placeholder="Enter location"
-                  required
-                />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-text mb-2">
                   Your Name <span className="text-red-500">*</span>
@@ -322,6 +439,21 @@ const ReportIncident = () => {
                   placeholder="Enter contact number"
                   required
                 />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-text mb-2">
+                  Email Address <span className="text-muted text-xs">(Optional - for email notifications)</span>
+                </label>
+                <input
+                  type="email"
+                  value={formData.reporterEmail}
+                  onChange={(e) => setFormData({ ...formData, reporterEmail: e.target.value })}
+                  className="input-field"
+                  placeholder="your.email@example.com"
+                />
+                <p className="text-xs text-muted mt-1.5">
+                  Provide your email to receive instant confirmation and status updates about your incident report.
+                </p>
               </div>
             </div>
 

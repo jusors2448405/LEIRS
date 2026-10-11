@@ -48,7 +48,7 @@ const NotificationDropdown = ({ user, isOpen, onClose }) => {
           .from('incidents')
           .select('id, incident_number, incident_type, priority')
           .eq('priority', 'Urgent')
-          .in('status', ['Pending', 'Under Investigation'])
+          .in('status', ['Pending', 'REVIEWED', 'Under Investigation'])
           .order('created_at', { ascending: false })
           .limit(5)
 
@@ -91,7 +91,7 @@ const NotificationDropdown = ({ user, isOpen, onClose }) => {
           .from('incidents')
           .select('id')
           .eq('priority', 'High')
-          .in('status', ['Pending', 'Under Investigation'])
+          .in('status', ['Pending', 'REVIEWED', 'Under Investigation'])
 
         if (hpErr) throw hpErr
 
@@ -137,7 +137,7 @@ const NotificationDropdown = ({ user, isOpen, onClose }) => {
           .from('incidents')
           .select('id')
           .eq('priority', 'High')
-          .in('status', ['Pending', 'Under Investigation'])
+          .in('status', ['Pending', 'REVIEWED', 'Under Investigation'])
 
         if (hpErr) throw hpErr
 

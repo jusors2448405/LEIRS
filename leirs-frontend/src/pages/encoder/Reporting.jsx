@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { Save, X, CheckCircle, Copy, Check, FileText } from 'lucide-react'
+import { Save, X, CheckCircle, Copy, Check, FileText, Mail } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import LocationSearch from '../../components/LocationSearch'
+import useComplainantEmail from '../../hooks/useComplainantEmail'
 
 // ── CopyButton: shows a tick for 2 seconds after copying ─────────────────────
 const CopyButton = ({ value }) => {
@@ -40,16 +41,26 @@ const Reporting = () => {
     location: '',
     locationLat: null,
     locationLng: null,
-    reporterName: '',
-    reporterContact: '',
+    complainantName: '',
+    complainantContact: '',
+    complainantEmail: '',
+    complainantAddress: '',
+    respondentName: '',
+    respondentContact: '',
+    respondentAddress: '',
     narrative: '',
-    priority: 'Low',
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [successIncidentNumber, setSuccessIncidentNumber] = useState('')
   const [successReferencePin, setSuccessReferencePin] = useState('')
+  const [createdIncidentId, setCreatedIncidentId] = useState(null)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailError, setEmailError] = useState(null)
+
+  // Initialize email hook
+  const { sendIncidentSubmitted, sending: sendingEmail } = useComplainantEmail(createdIncidentId)
 
   const resetForm = () => {
     setFormData({
@@ -57,11 +68,18 @@ const Reporting = () => {
       location: '',
       locationLat: null,
       locationLng: null,
-      reporterName: '',
-      reporterContact: '',
+      complainantName: '',
+      complainantContact: '',
+      complainantEmail: '',
+      complainantAddress: '',
+      respondentName: '',
+      respondentContact: '',
+      respondentAddress: '',
       narrative: '',
-      priority: 'Low',
     })
+    setCreatedIncidentId(null)
+    setEmailSent(false)
+    setEmailError(null)
   }
 
   const formatDateForIncidentNumber = (date) => {
@@ -102,14 +120,27 @@ const Reporting = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    console.log('=== FORM SUBMISSION STARTED (Reporting.jsx) ===')
+    console.log('Form data:', formData)
+    console.log('complainantEmail field:', formData.complainantEmail)
+    
     setSubmitError('')
     setSuccessIncidentNumber('')
+    setEmailSent(false)
+    setEmailError(null)
 
     const incidentType = formData.type.trim()
     const location = formData.location.trim()
-    const complainantName = formData.reporterName.trim()
-    const complainantContact = formData.reporterContact.trim()
+    const complainantName = formData.complainantName.trim()
+    const complainantContact = formData.complainantContact.trim()
+    const complainantEmail = formData.complainantEmail.trim()
     const description = formData.narrative.trim()
+    
+    console.log('=== EXTRACTED VALUES ===')
+    console.log('complainantEmail:', complainantEmail)
+    console.log('complainantName:', complainantName)
+    console.log('incidentType:', incidentType)
 
     if (!incidentType || !location || !complainantName || !complainantContact || !description) {
       setSubmitError('Please complete all required fields.')
@@ -137,7 +168,7 @@ const Reporting = () => {
       const incidentNumber = generateIncidentNumber()
       const referencePin   = generateReferencePin()
 
-      const { error } = await supabase
+      const { data: createdIncident, error } = await supabase
         .from('incidents')
         .insert([
           {
@@ -150,18 +181,80 @@ const Reporting = () => {
             location_longitude: formData.locationLng,
             complainant_name: complainantName,
             complainant_contact: complainantContact,
+            complainant_email: complainantEmail || null,
+            complainant_address: formData.complainantAddress.trim() || null,
+            respondent_name: formData.respondentName.trim() || null,
+            respondent_contact: formData.respondentContact.trim() || null,
+            respondent_address: formData.respondentAddress.trim() || null,
             description,
-            priority: formData.priority,
+            priority: 'Low',
             status: 'Pending',
             assigned_officer: null,
             created_by: createdBy,
             reference_pin: referencePin,
           },
         ])
+        .select()
+        .single()
 
-      if (!error) {
+      if (!error && createdIncident) {
+        console.log('=== INCIDENT CREATED SUCCESSFULLY ===')
+        console.log('Created incident data:', createdIncident)
+        
         setSuccessIncidentNumber(incidentNumber)
         setSuccessReferencePin(referencePin)
+        setCreatedIncidentId(createdIncident.id)
+        
+        console.log('=== EMAIL NOTIFICATION CHECK ===')
+        console.log('complainantEmail value:', complainantEmail)
+        console.log('complainantEmail type:', typeof complainantEmail)
+        console.log('complainantEmail length:', complainantEmail?.length)
+        console.log('Is email truthy?', !!complainantEmail)
+        
+        // Send email notification (non-blocking)
+        if (complainantEmail) {
+          console.log('✅ Email condition passed - entering email block')
+          console.log('Attempting to send email to:', complainantEmail)
+          
+          try {
+            const incidentDataForEmail = {
+              id: createdIncident.id,
+              incident_number: createdIncident.incident_number,
+              incident_type: createdIncident.incident_type,
+              location: createdIncident.location,
+              complainant_name: createdIncident.complainant_name,
+              status: createdIncident.status
+            }
+            
+            console.log('📧 About to call sendIncidentSubmitted()')
+            console.log('Email:', complainantEmail)
+            console.log('Incident data:', incidentDataForEmail)
+            
+            const result = await sendIncidentSubmitted(complainantEmail, incidentDataForEmail)
+            
+            console.log('📬 sendIncidentSubmitted() returned:', result)
+            console.log('Result type:', typeof result)
+            console.log('Result keys:', result ? Object.keys(result) : 'null')
+            
+            if (result?.error) {
+              console.error('❌ Email error returned:', result.error)
+              setEmailError('Note: Confirmation email could not be sent.')
+            } else {
+              console.log('✅ Email sent successfully!')
+              setEmailSent(true)
+            }
+          } catch (err) {
+            console.error('💥 Exception caught during email send:', err)
+            console.error('Error name:', err.name)
+            console.error('Error message:', err.message)
+            setEmailError('Note: Confirmation email could not be sent.')
+          }
+        } else {
+          console.log('❌ Email condition failed - no email provided')
+          console.log('Skipping email notification')
+        }
+        
+        console.log('=== CLEANING UP ===')
         resetForm()
         setIsSubmitting(false)
         return
@@ -201,51 +294,37 @@ const Reporting = () => {
             </div>
           </div>
 
-          {/* Credentials */}
+          {/* Email Confirmation */}
           <div className="px-8 py-6 space-y-4">
-            <p className="text-sm font-medium text-text">
-              Save the details below — you will need them to track this report on the public portal.
-            </p>
-
-            {/* Incident Number row */}
-            <div className="flex items-center justify-between gap-4 p-4 bg-background rounded-xl border border-border">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <FileText size={16} className="text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted font-medium uppercase tracking-wide mb-0.5">
-                    Incident Number
-                  </p>
-                  <p className="font-mono font-bold text-text text-base tracking-wide truncate">
-                    {successIncidentNumber}
-                  </p>
-                </div>
+            {emailSent && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg mb-4">
+                <Mail size={16} className="text-green-600 flex-shrink-0" />
+                <p className="text-sm text-green-700">
+                  Confirmation email sent successfully! Check your inbox.
+                </p>
               </div>
-              <CopyButton value={successIncidentNumber} />
-            </div>
+            )}
 
-            {/* Reference PIN row */}
-            <div className="flex items-center justify-between gap-4 p-4 bg-background rounded-xl border border-border">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle size={16} className="text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted font-medium uppercase tracking-wide mb-0.5">
-                    Reference PIN
-                  </p>
-                  <p className="font-mono font-bold text-text text-2xl tracking-[0.35em]">
-                    {successReferencePin}
-                  </p>
-                </div>
+            {emailError && (
+              <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+                <Mail size={16} className="text-yellow-600 flex-shrink-0" />
+                <p className="text-sm text-yellow-700">
+                  {emailError}
+                </p>
               </div>
-              <CopyButton value={successReferencePin} />
-            </div>
-
-            {/* Warning note */}
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
-              This PIN will not be shown again once you leave this page. Keep it in a safe place.
+            )}
+            
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm font-medium text-blue-900 mb-2">
+                {emailSent 
+                  ? 'Email notifications enabled for this incident' 
+                  : 'Check your email for updates regarding your report.'}
+              </p>
+              <p className="text-sm text-blue-800">
+                {emailSent
+                  ? 'You will receive email updates for important status changes.'
+                  : 'Updates will be sent to the email address you provided during the report submission.'}
+              </p>
             </div>
           </div>
 
@@ -295,19 +374,6 @@ const Reporting = () => {
                   <option value="Other">Other</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">Priority</label>
-                <select
-                  value={formData.priority}
-                  onChange={(e) => setFormData({...formData, priority: e.target.value})}
-                  className="input-field"
-                  required
-                >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                </select>
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -324,27 +390,91 @@ const Reporting = () => {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">Reporter Name</label>
-                <input
-                  type="text"
-                  value={formData.reporterName}
-                  onChange={(e) => setFormData({...formData, reporterName: e.target.value})}
-                  className="input-field"
-                  placeholder="Enter name"
-                  required
-                />
+            </div>
+
+            {/* Complainant Information Section */}
+            <div className="border-t border-border pt-6">
+              <h3 className="text-sm font-medium text-text mb-4">Complainant Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Complainant Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={formData.complainantName}
+                    onChange={(e) => setFormData({...formData, complainantName: e.target.value})}
+                    className="input-field"
+                    placeholder="Enter name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Contact Number <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={formData.complainantContact}
+                    onChange={(e) => setFormData({...formData, complainantContact: e.target.value})}
+                    className="input-field"
+                    placeholder="Enter contact number"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Email Address (Optional)</label>
+                  <input
+                    type="email"
+                    value={formData.complainantEmail}
+                    onChange={(e) => setFormData({...formData, complainantEmail: e.target.value})}
+                    className="input-field"
+                    placeholder="Enter email address"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Address (Optional)</label>
+                  <input
+                    type="text"
+                    value={formData.complainantAddress}
+                    onChange={(e) => setFormData({...formData, complainantAddress: e.target.value})}
+                    className="input-field"
+                    placeholder="Enter address"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">Reporter Contact</label>
-                <input
-                  type="text"
-                  value={formData.reporterContact}
-                  onChange={(e) => setFormData({...formData, reporterContact: e.target.value})}
-                  className="input-field"
-                  placeholder="Enter contact number"
-                  required
-                />
+            </div>
+
+            {/* Respondent Details Section */}
+            <div className="border-t border-border pt-6">
+              <h3 className="text-sm font-medium text-text mb-4">Respondent Details (Optional)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Respondent Name</label>
+                  <input
+                    type="text"
+                    value={formData.respondentName}
+                    onChange={(e) => setFormData({...formData, respondentName: e.target.value})}
+                    className="input-field"
+                    placeholder="Enter name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Respondent Contact</label>
+                  <input
+                    type="text"
+                    value={formData.respondentContact}
+                    onChange={(e) => setFormData({...formData, respondentContact: e.target.value})}
+                    className="input-field"
+                    placeholder="Enter contact number"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-text mb-2">Respondent Address</label>
+                  <input
+                    type="text"
+                    value={formData.respondentAddress}
+                    onChange={(e) => setFormData({...formData, respondentAddress: e.target.value})}
+                    className="input-field"
+                    placeholder="Enter address"
+                  />
+                </div>
               </div>
             </div>
 

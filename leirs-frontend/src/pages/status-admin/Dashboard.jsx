@@ -276,7 +276,11 @@ const StatusAdminDashboard = () => {
         {recentCases.length > 0 && (
           <div className="px-6 py-4 border-t border-border">
             <button
-              onClick={() => navigate('/status-admin/monitoring')}
+              onClick={() => {
+                console.log('[StatusDashboard] "View All Cases" button clicked, navigating to:', '/status-admin/monitoring')
+                console.log('[StatusDashboard] Current location:', window.location.pathname)
+                navigate('/status-admin/monitoring')
+              }}
               className="text-sm text-primary hover:text-primary/80 font-medium"
             >
               View All Cases →

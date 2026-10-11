@@ -17,11 +17,11 @@ function ForwardedIncidents() {
       setLoading(true);
       setError(null);
 
-      // Fetch incidents with status 'Under Investigation' that don't have case documentation yet
+      // Fetch incidents with status 'REVIEWED' that don't have case documentation yet
       const { data: incidents, error: incidentsError } = await supabase
         .from('incidents')
         .select('*')
-        .eq('status', 'Under Investigation')
+        .eq('status', 'REVIEWED')
         .order('created_at', { ascending: false });
 
       if (incidentsError) throw incidentsError;
@@ -208,7 +208,7 @@ function ForwardedIncidents() {
             <div className="d-flex align-items-start">
               <i className="bi bi-info-circle text-muted me-2 mt-1"></i>
               <small className="text-muted">
-                Showing incidents with status <strong>"Under Investigation"</strong> that do not have case documentation yet.
+                Showing incidents with status <strong>"REVIEWED"</strong> that do not have case documentation yet.
               </small>
             </div>
           </div>

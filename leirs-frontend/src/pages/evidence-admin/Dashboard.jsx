@@ -12,39 +12,74 @@ const EvidenceAdminDashboard = () => {
   const [loadingNewCases, setLoadingNewCases] = useState(true)
   const [newCasesError, setNewCasesError] = useState(null)
 
-  // Fetch incidents with completed dispatches
+  // Fetch incidents with completed dispatches that are eligible for evidence
   useEffect(() => {
     const fetchNewCasesReadyForEvidence = async () => {
       try {
         setLoadingNewCases(true)
         setNewCasesError(null)
 
-        // Get all completed dispatches with their incidents, sorted by completion time
-        const { data: completedDispatches, error: dispatchError } = await supabase
-          .from('dispatch')
+        // Get incidents with PNP routing OR evidence_enabled flag
+        const { data: incidentsData, error: incidentsError } = await supabase
+          .from('incidents')
           .select(`
-            id,
-            incident_id,
-            dispatch_status,
-            updated_at,
-            dispatched_at,
-            incident:incidents (
-              id,
-              incident_number,
-              incident_type,
-              incident_date,
-              location,
-              status
-            )
+            id, 
+            incident_number,
+            incident_type, 
+            incident_date, 
+            location, 
+            status,
+            routing_decision,
+            evidence_enabled
           `)
+          .order('created_at', { ascending: false })
+
+        if (incidentsError) throw incidentsError
+
+        // Filter to incidents that are PNP-referred OR manually enabled
+        let eligibleIncidents = (incidentsData || []).filter(inc => 
+          inc.routing_decision === 'pnp_referral' || inc.evidence_enabled === true
+        )
+
+        // Get case_number for each incident by joining with case_documentations
+        const enrichedIncidents = await Promise.all(
+          eligibleIncidents.map(async (inc) => {
+            // Get case documentation for this incident
+            const { data: caseDoc } = await supabase
+              .from('case_documentations')
+              .select('case_number')
+              .eq('incident_id', inc.id)
+              .maybeSingle()
+
+            return {
+              ...inc,
+              case_number: caseDoc?.case_number || null
+            }
+          })
+        )
+
+        // Get dispatch records for eligible incidents
+        const eligibleIds = enrichedIncidents.map(inc => inc.id)
+        
+        const { data: dispatchData, error: dispatchError } = await supabase
+          .from('dispatch')
+          .select('incident_id, dispatch_number, dispatch_status, updated_at')
+          .in('incident_id', eligibleIds)
           .eq('dispatch_status', 'Completed')
-          .order('updated_at', { ascending: false })
-          .limit(50) // Get more initially, we'll filter down
 
         if (dispatchError) throw dispatchError
 
-        // Get all evidence records to check which incidents already have evidence
-        const { data: evidenceRecords, error: evidenceError } = await supabase
+        // Create map of incident_id -> dispatch info (completed only)
+        const dispatchMap = new Map(
+          (dispatchData || []).map(d => [d.incident_id, { 
+            dispatch_number: d.dispatch_number,
+            dispatch_status: d.dispatch_status,
+            dispatch_updated_at: d.updated_at
+          }])
+        )
+
+        // Get all incidents that already have evidence records
+        const { data: existingEvidence, error: evidenceError } = await supabase
           .from('evidence')
           .select('incident_id')
 
@@ -52,22 +87,48 @@ const EvidenceAdminDashboard = () => {
 
         // Create a Set of incident IDs that already have evidence
         const incidentsWithEvidence = new Set(
-          evidenceRecords?.map(e => e.incident_id) || []
+          existingEvidence?.map(e => e.incident_id) || []
         )
 
-        // Filter out any null incidents, flatten the structure, 
-        // and EXCLUDE incidents that already have evidence
-        const casesWithIncidents = (completedDispatches || [])
-          .filter(d => d.incident)
-          .map(d => ({
-            ...d.incident,
-            dispatch_updated_at: d.updated_at,
-            dispatch_id: d.id
-          }))
-          .filter(incident => !incidentsWithEvidence.has(incident.id)) // KEY FILTER
-          .slice(0, 10) // Limit to 10 after filtering
+        // Filter to incidents that:
+        // 1. Have completed dispatch (for PNP-referred cases)
+        // 2. OR are admin-enabled (don't require dispatch)
+        // 3. Don't already have evidence
+        let filteredIncidents = enrichedIncidents.filter(inc => {
+          const hasEvidence = incidentsWithEvidence.has(inc.id)
+          const hasCompletedDispatch = dispatchMap.has(inc.id)
+          const isAdminEnabled = inc.evidence_enabled === true
+          const isPNPReferred = inc.routing_decision === 'pnp_referral'
 
-        setNewCases(casesWithIncidents)
+          // Don't show if already has evidence
+          if (hasEvidence) return false
+
+          // Show if admin enabled (regardless of dispatch)
+          if (isAdminEnabled) return true
+
+          // Show if PNP-referred AND has completed dispatch
+          if (isPNPReferred && hasCompletedDispatch) return true
+
+          return false
+        })
+
+        // Attach dispatch info if available
+        filteredIncidents = filteredIncidents.map(inc => ({
+          ...inc,
+          dispatch_number: dispatchMap.get(inc.id)?.dispatch_number || null,
+          dispatch_status: dispatchMap.get(inc.id)?.dispatch_status || 'Not Dispatched',
+          dispatch_updated_at: dispatchMap.get(inc.id)?.dispatch_updated_at || null
+        }))
+
+        // Sort by dispatch completion time (most recent first)
+        filteredIncidents.sort((a, b) => {
+          const dateA = a.dispatch_updated_at ? new Date(a.dispatch_updated_at) : new Date(0)
+          const dateB = b.dispatch_updated_at ? new Date(b.dispatch_updated_at) : new Date(0)
+          return dateB - dateA
+        })
+
+        // Limit to 10 for dashboard display
+        setNewCases(filteredIncidents.slice(0, 10))
       } catch (err) {
         console.error('Error fetching new cases ready for evidence:', err)
         setNewCasesError(err.message)
@@ -87,6 +148,10 @@ const EvidenceAdminDashboard = () => {
       )
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'evidence' },
+        () => fetchNewCasesReadyForEvidence()
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'incidents' },
         () => fetchNewCasesReadyForEvidence()
       )
       .subscribe()
@@ -199,10 +264,15 @@ const EvidenceAdminDashboard = () => {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <p className="font-mono text-sm font-bold text-primary">
                         {incident.incident_number}
                       </p>
+                      {incident.case_number && (
+                        <p className="font-mono text-xs text-muted">
+                          Case: {incident.case_number}
+                        </p>
+                      )}
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-300">
                         Ready for Evidence
                       </span>
@@ -289,8 +359,8 @@ const EvidenceAdminDashboard = () => {
               <CheckCircle size={24} className="text-green-600" />
             </div>
           </div>
-          <p className="text-2xl font-heading font-bold text-green-600">{stats.byStatus['Logged'] || 0}</p>
-          <p className="text-sm text-muted mt-1">Logged</p>
+          <p className="text-2xl font-heading font-bold text-green-600">{stats.byStatus['Collected'] || 0}</p>
+          <p className="text-sm text-muted mt-1">Collected</p>
         </div>
 
         <div className="bg-white border border-blue-200 rounded-xl p-6">
@@ -299,8 +369,8 @@ const EvidenceAdminDashboard = () => {
               <Shield size={24} className="text-blue-600" />
             </div>
           </div>
-          <p className="text-2xl font-heading font-bold text-blue-600">{stats.byStatus['In Custody'] || 0}</p>
-          <p className="text-sm text-muted mt-1">In Custody</p>
+          <p className="text-2xl font-heading font-bold text-blue-600">{stats.byStatus['Under Review'] || 0}</p>
+          <p className="text-sm text-muted mt-1">Under Review</p>
         </div>
 
         <div className="bg-white border border-purple-200 rounded-xl p-6">
@@ -309,8 +379,8 @@ const EvidenceAdminDashboard = () => {
               <Scale size={24} className="text-purple-600" />
             </div>
           </div>
-          <p className="text-2xl font-heading font-bold text-purple-600">{stats.byStatus['In Court'] || 0}</p>
-          <p className="text-sm text-muted mt-1">In Court</p>
+          <p className="text-2xl font-heading font-bold text-purple-600">{stats.byStatus['Accepted'] || 0}</p>
+          <p className="text-sm text-muted mt-1">Accepted</p>
         </div>
       </div>
 
@@ -320,18 +390,8 @@ const EvidenceAdminDashboard = () => {
           <div className="flex items-center gap-3">
             <FileText size={20} className="text-orange-600" />
             <div>
-              <p className="text-lg font-bold text-orange-600">{stats.byStatus['Released'] || 0}</p>
-              <p className="text-sm text-muted">Released</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white border border-cyan-200 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <Clock size={20} className="text-cyan-600" />
-            <div>
-              <p className="text-lg font-bold text-cyan-600">{stats.byStatus['Returned'] || 0}</p>
-              <p className="text-sm text-muted">Returned</p>
+              <p className="text-lg font-bold text-orange-600">{stats.byStatus['Submitted to Authority'] || 0}</p>
+              <p className="text-sm text-muted">Submitted to Authority</p>
             </div>
           </div>
         </div>
@@ -342,6 +402,16 @@ const EvidenceAdminDashboard = () => {
             <div>
               <p className="text-lg font-bold text-gray-600">{stats.byStatus['Archived'] || 0}</p>
               <p className="text-sm text-muted">Archived</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-cyan-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <Clock size={20} className="text-cyan-600" />
+            <div>
+              <p className="text-lg font-bold text-cyan-600">{newCases.length}</p>
+              <p className="text-sm text-muted">Ready for Evidence</p>
             </div>
           </div>
         </div>
@@ -371,12 +441,14 @@ const EvidenceAdminDashboard = () => {
                         {evidence.evidence_type}
                       </span>
                       <span className={`text-xs px-2 py-0.5 rounded ${
-                        evidence.status === 'Logged' ? 'bg-green-100 text-green-700' :
-                        evidence.status === 'In Custody' ? 'bg-blue-100 text-blue-700' :
-                        evidence.status === 'In Court' ? 'bg-purple-100 text-purple-700' :
+                        evidence.evidence_status === 'Collected' ? 'bg-green-100 text-green-700' :
+                        evidence.evidence_status === 'Under Review' ? 'bg-blue-100 text-blue-700' :
+                        evidence.evidence_status === 'Accepted' ? 'bg-purple-100 text-purple-700' :
+                        evidence.evidence_status === 'Submitted to Authority' ? 'bg-orange-100 text-orange-700' :
+                        evidence.evidence_status === 'Archived' ? 'bg-gray-100 text-gray-700' :
                         'bg-gray-100 text-gray-700'
                       }`}>
-                        {evidence.status || 'Logged'}
+                        {evidence.evidence_status || 'Collected'}
                       </span>
                     </div>
                   </div>

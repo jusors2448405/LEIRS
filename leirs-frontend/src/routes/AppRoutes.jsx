@@ -31,6 +31,7 @@ import DispatchAdminDashboard from '../pages/dispatch-admin/Dashboard'
 import DispatchAdminPendingDispatch from '../pages/dispatch-admin/PendingDispatch'
 import DispatchAdminDispatchRequest from '../pages/dispatch-admin/DispatchRequest'
 import DispatchAdminActiveDispatches from '../pages/dispatch-admin/ActiveDispatches'
+import UnifiedDispatchForm from '../pages/dispatch-admin/UnifiedDispatchForm'
 import EvidenceAdminDashboard from '../pages/evidence-admin/Dashboard'
 import EvidenceAdminEvidenceList from '../pages/evidence-admin/EvidenceList'
 import EvidenceAdminChainOfCustody from '../pages/evidence-admin/ChainOfCustody'
@@ -107,6 +108,7 @@ const AppRoutes = ({ user, onLogin, onLogout }) => {
         <Route path="/dispatch-admin" element={<DispatchAdminLayout user={user} onLogout={onLogout} />}>
           <Route index element={<DispatchAdminDashboard />} />
           <Route path="pending" element={<DispatchAdminPendingDispatch />} />
+          <Route path="response/:incidentId" element={<UnifiedDispatchForm />} />
           <Route path="dispatch/:incidentId" element={<DispatchAdminDispatchRequest />} />
           <Route path="active" element={<DispatchAdminActiveDispatches />} />
         </Route>

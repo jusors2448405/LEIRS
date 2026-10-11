@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, FileText, MapPin, Calendar, Clock, User, Phone,
-  Radio, Shield, Activity, AlertCircle, Save, CheckCircle
+  Radio, Shield, Activity, AlertCircle, Save, CheckCircle, ArrowRight
 } from 'lucide-react';
 import useCaseStatus from '../../hooks/useCaseStatus';
+import useCaseStages from '../../hooks/useCaseStages';
+import CaseTimeline from '../../components/CaseTimeline';
 
 const STATUS_OPTIONS = [
   { value: 'Pending', label: 'Pending' },
@@ -17,7 +19,8 @@ const STATUS_OPTIONS = [
 const CaseDetail = () => {
   const { incidentId } = useParams();
   const navigate = useNavigate();
-  const { fetchCaseDetail, updateCaseStatus, getCurrentStatus } = useCaseStatus();
+  const { fetchCaseDetail, updateCaseStatus, getCurrentStatus, determineCurrentStage } = useCaseStatus();
+  const { stages, loading: stagesLoading } = useCaseStages(incidentId);
   
   const [caseData, setCaseData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -27,10 +30,20 @@ const CaseDetail = () => {
   const [newStatus, setNewStatus] = useState('');
   const [statusNotes, setStatusNotes] = useState('');
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [currentStageInfo, setCurrentStageInfo] = useState(null);
 
   useEffect(() => {
     loadCaseDetail();
   }, [incidentId]);
+
+  // Calculate current stage when data changes
+  useEffect(() => {
+    if (caseData && stages && !stagesLoading) {
+      const stageInfo = determineCurrentStage(caseData, stages);
+      setCurrentStageInfo(stageInfo);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caseData, stages, stagesLoading]);
 
   const loadCaseDetail = async () => {
     setLoading(true);
@@ -149,7 +162,11 @@ const CaseDetail = () => {
           <AlertCircle size={48} className="mx-auto text-red-500 mb-3" />
           <p className="text-red-600 mb-4">{error || 'Case not found'}</p>
           <button
-            onClick={() => navigate('/status-admin/monitoring')}
+            onClick={() => {
+              console.log('[CaseDetail] Error back button clicked, navigating to:', '/status-admin/monitoring')
+              console.log('[CaseDetail] Current location:', window.location.pathname)
+              navigate('/status-admin/monitoring')
+            }}
             className="btn-primary"
           >
             Back to Case List
@@ -173,7 +190,11 @@ const CaseDetail = () => {
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate('/status-admin/monitoring')}
+          onClick={() => {
+            console.log('[CaseDetail] Back button clicked, navigating to:', '/status-admin/monitoring')
+            console.log('[CaseDetail] Current location:', window.location.pathname)
+            navigate('/status-admin/monitoring')
+          }}
           className="p-2 hover:bg-background rounded-lg transition-colors"
         >
           <ArrowLeft size={20} className="text-muted" />
@@ -189,6 +210,81 @@ const CaseDetail = () => {
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
           <CheckCircle size={20} className="text-green-600" />
           <p className="text-sm text-green-800">Case status updated successfully</p>
+        </div>
+      )}
+
+      {/* Case Progress Timeline */}
+      <div className="bg-white border border-border rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-border bg-background">
+          <div className="flex items-center gap-2">
+            <Activity size={18} className="text-primary" />
+            <h2 className="text-lg font-heading font-semibold text-text">Case Progress Timeline</h2>
+          </div>
+          <p className="text-xs text-muted mt-1">Complete journey from incident report to resolution</p>
+        </div>
+        <div className="p-6">
+          {stagesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                <p className="mt-2 text-sm text-muted">Loading timeline...</p>
+              </div>
+            </div>
+          ) : (
+            <CaseTimeline caseData={caseData} stages={stages} />
+          )}
+        </div>
+      </div>
+
+      {/* Current Case Stage */}
+      {currentStageInfo && (
+        <div className="bg-white border border-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-border bg-background">
+            <div className="flex items-center gap-2">
+              <ArrowRight size={18} className="text-primary" />
+              <h2 className="text-lg font-heading font-semibold text-text">Current Case Stage</h2>
+            </div>
+            <p className="text-xs text-muted mt-1">Current progress and next action</p>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Activity size={20} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wide mb-1">Current Stage</p>
+                  <p className="text-sm font-semibold text-text">{currentStageInfo.stage}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <User size={20} className="text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wide mb-1">Handled By</p>
+                  <p className="text-sm font-semibold text-text">{currentStageInfo.handledBy}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  currentStageInfo.priority === 'high' ? 'bg-red-100' :
+                  currentStageInfo.priority === 'medium' ? 'bg-orange-100' : 'bg-green-100'
+                }`}>
+                  <ArrowRight size={20} className={
+                    currentStageInfo.priority === 'high' ? 'text-red-600' :
+                    currentStageInfo.priority === 'medium' ? 'text-orange-600' : 'text-green-600'
+                  } />
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wide mb-1">Next Action</p>
+                  <p className="text-sm font-semibold text-text">{currentStageInfo.nextAction}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -405,8 +501,9 @@ const CaseDetail = () => {
         <div className="px-6 py-4 border-b border-border bg-background">
           <div className="flex items-center gap-2">
             <Activity size={18} className="text-primary" />
-            <h2 className="text-lg font-heading font-semibold text-text">Activity Timeline</h2>
+            <h2 className="text-lg font-heading font-semibold text-text">Complete Activity History</h2>
           </div>
+          <p className="text-xs text-muted mt-1">All updates and activities across modules</p>
         </div>
 
         <div className="p-6">
@@ -428,7 +525,8 @@ const CaseDetail = () => {
           ) : (
             <div className="text-center py-8">
               <Activity size={32} className="mx-auto text-border mb-2" />
-              <p className="text-sm text-muted">No activity updates yet</p>
+              <p className="text-sm text-muted">No status updates yet</p>
+              <p className="text-xs text-muted mt-1">Activity updates will appear here as the case progresses</p>
             </div>
           )}
         </div>
